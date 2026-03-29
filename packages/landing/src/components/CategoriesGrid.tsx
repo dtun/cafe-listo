@@ -9,7 +9,6 @@ export function CategoriesGrid() {
           const count = getItemsByCategory(category.id).length;
           return (
             <div className="category-card" key={category.id}>
-              <span>{category.emoji}</span>
               <h3>{category.label}</h3>
               <p>{count} items</p>
             </div>

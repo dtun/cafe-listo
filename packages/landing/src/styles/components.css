@@ -26,17 +26,17 @@
 .hero-cta {
   display: inline-block;
   padding: var(--space-md) var(--space-xl);
-  background-color: var(--color-primary);
-  color: var(--color-surface);
+  background-color: var(--color-yellow);
+  color: var(--color-text);
   font-size: var(--font-size-lg);
-  font-weight: 600;
+  font-weight: 700;
   border-radius: var(--border-radius);
   transition: background-color 0.2s;
 }
 
 .hero-cta:hover {
-  background-color: var(--color-primary-dark);
-  color: var(--color-surface);
+  background-color: var(--color-yellow-dark);
+  color: var(--color-text);
 }
 
 /* Stats */
@@ -65,6 +65,7 @@
   font-size: var(--font-size-2xl);
   font-weight: 700;
   margin: 0;
+  color: var(--color-yellow);
 }
 
 /* Categories Grid */
@@ -89,6 +90,7 @@
 .category-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-yellow);
   border-radius: var(--border-radius);
   padding: var(--space-lg);
   text-align: center;
@@ -96,13 +98,8 @@
 }
 
 .category-card:hover {
-  box-shadow: 0 4px 12px rgba(45, 24, 16, 0.08);
-}
-
-.category-card span:first-child {
-  font-size: var(--font-size-2xl);
-  display: block;
-  margin-bottom: var(--space-sm);
+  box-shadow: 0 4px 12px rgba(45, 24, 16, 0.12);
+  border-left-color: var(--color-primary);
 }
 
 .category-card h3 {
@@ -132,7 +129,7 @@
 
 .features-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
   gap: var(--space-xl);
 }
 

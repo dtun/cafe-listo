@@ -14,6 +14,11 @@ const FEATURES = [
     description:
       "See exactly where you stand across all categories and know what to prioritize next.",
   },
+  {
+    title: "AI Chat Integration",
+    description:
+      "Access your checklist through AI chat clients like Claude and ChatGPT — get guidance right where you already work.",
+  },
 ];
 
 export function Features() {
