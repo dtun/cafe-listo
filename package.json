@@ -1,18 +1,33 @@
 {
   "name": "cafe-listo",
   "private": true,
+  "type": "module",
   "scripts": {
     "test": "pnpm -r test",
     "test:shared": "pnpm --filter @cafe-listo/shared test",
     "test:mobile": "pnpm --filter @cafe-listo/mobile test",
     "test:landing": "pnpm --filter @cafe-listo/landing test",
     "start": "pnpm --filter @cafe-listo/mobile start",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "engines": {
     "node": ">=20"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild"]
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.1.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "prettier": "^3.8.1",
+    "typescript-eslint": "^8.57.2"
   }
 }
