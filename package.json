@@ -1,0 +1,14 @@
+{
+  "name": "cafe-listo",
+  "private": true,
+  "scripts": {
+    "test": "pnpm -r test",
+    "test:shared": "pnpm --filter @cafe-listo/shared test",
+    "test:mobile": "pnpm --filter @cafe-listo/mobile test",
+    "start": "pnpm --filter @cafe-listo/mobile start",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
