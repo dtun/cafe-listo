@@ -25,13 +25,18 @@ describe("CategoriesGrid", () => {
     }
   });
 
-  it("renders the item count per category", () => {
+  it("renders the correct total of item count labels", () => {
+    render(<CategoriesGrid />);
+    const itemLabels = screen.getAllByText(/\d+ items?/);
+    expect(itemLabels).toHaveLength(CATEGORIES.length);
+  });
+
+  it("displays accurate item counts from shared data", () => {
     render(<CategoriesGrid />);
     for (const category of CATEGORIES) {
       const count = getItemsByCategory(category.id).length;
-      expect(
-        screen.getByText(new RegExp(`${count} item`)),
-      ).toBeInTheDocument();
+      const card = screen.getByText(category.label).closest("div")!;
+      expect(card).toHaveTextContent(`${count} items`);
     }
   });
 });
