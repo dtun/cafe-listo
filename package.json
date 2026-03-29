@@ -5,10 +5,14 @@
     "test": "pnpm -r test",
     "test:shared": "pnpm --filter @cafe-listo/shared test",
     "test:mobile": "pnpm --filter @cafe-listo/mobile test",
+    "test:landing": "pnpm --filter @cafe-listo/landing test",
     "start": "pnpm --filter @cafe-listo/mobile start",
     "typecheck": "pnpm -r typecheck"
   },
   "engines": {
     "node": ">=20"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
   }
 }

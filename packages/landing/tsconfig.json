@@ -3,8 +3,10 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
-    "module": "commonjs",
-    "target": "es2022"
+    "module": "ESNext",
+    "target": "ES2022",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx"
   },
-  "include": ["src"]
+  "include": ["src", "vite-env.d.ts"]
 }
