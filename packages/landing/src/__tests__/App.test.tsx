@@ -16,11 +16,11 @@ describe("App", () => {
 
   it("renders all page sections", () => {
     render(<App />);
-    expect(screen.getByText(/Cafe Listo/i)).toBeInTheDocument();
-    expect(screen.getByText(/Categories/i)).toBeInTheDocument();
-    expect(screen.getByText(/FEMA/i)).toBeInTheDocument();
-    expect(screen.getByText(/Why Cafe Listo/i)).toBeInTheDocument();
-    expect(screen.getByText(/App Store/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/Cafe Listo/i);
+    expect(screen.getByRole("heading", { name: /categories/i })).toBeInTheDocument();
+    expect(screen.getAllByText(/FEMA/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole("heading", { name: /why cafe listo/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /get the app/i })).toBeInTheDocument();
   });
 
   it("uses semantic landmarks", () => {

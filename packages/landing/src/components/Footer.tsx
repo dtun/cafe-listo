@@ -1,3 +1,7 @@
 export function Footer() {
-  return <div />;
+  return (
+    <footer>
+      <p>Cafe Listo</p>
+    </footer>
+  );
 }
