@@ -18,10 +18,10 @@ describe("CategoriesGrid", () => {
     }
   });
 
-  it("renders the emoji for each category", () => {
+  it("does not render emojis", () => {
     render(<CategoriesGrid />);
     for (const category of CATEGORIES) {
-      expect(screen.getByText(category.emoji)).toBeInTheDocument();
+      expect(screen.queryByText(category.emoji)).not.toBeInTheDocument();
     }
   });
 
