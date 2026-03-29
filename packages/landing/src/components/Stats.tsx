@@ -2,7 +2,7 @@ import { CATEGORIES, PREP_ITEMS } from "@cafe-listo/shared";
 
 export function Stats() {
   return (
-    <section>
+    <section className="stats">
       <dl>
         <div>
           <dt>Items</dt>

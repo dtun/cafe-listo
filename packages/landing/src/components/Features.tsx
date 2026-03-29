@@ -18,11 +18,11 @@ const FEATURES = [
 
 export function Features() {
   return (
-    <section>
+    <section className="features">
       <h2>Why Cafe Listo</h2>
-      <div>
+      <div className="features-grid">
         {FEATURES.map((feature) => (
-          <div key={feature.title}>
+          <div className="feature-card" key={feature.title}>
             <h3>{feature.title}</h3>
             <p>{feature.description}</p>
           </div>

@@ -1,0 +1,37 @@
+:root {
+  /* Cafe Bustelo-inspired warm palette */
+  --color-bg: #fff8f0;
+  --color-surface: #ffffff;
+  --color-primary: #c41e3a;
+  --color-primary-dark: #8b1a2b;
+  --color-text: #2d1810;
+  --color-text-muted: #6b4c3b;
+  --color-accent-gold: #d4a853;
+  --color-border: #e8ddd4;
+
+  /* Typography */
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.25rem;
+  --font-size-xl: 1.5rem;
+  --font-size-2xl: 2rem;
+  --font-size-3xl: 2.5rem;
+  --font-size-4xl: 3.5rem;
+
+  /* Spacing */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+  --space-3xl: 4rem;
+  --space-4xl: 6rem;
+
+  /* Layout */
+  --max-width: 64rem;
+  --border-radius: 0.5rem;
+}
