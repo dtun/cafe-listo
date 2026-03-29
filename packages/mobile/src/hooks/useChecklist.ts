@@ -7,7 +7,7 @@ import {
 
 export function useChecklist() {
   const [state, setState] = useState<ChecklistState>(
-    createInitialChecklistState
+    createInitialChecklistState,
   );
 
   const toggle = (itemId: string) => {

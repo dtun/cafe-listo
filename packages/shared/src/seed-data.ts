@@ -81,7 +81,8 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "food",
     essential: true,
     quantity: "12 bars",
-    regionNote: "Choose bars that won't melt — avoid chocolate-heavy options in AZ heat",
+    regionNote:
+      "Choose bars that won't melt — avoid chocolate-heavy options in AZ heat",
   },
   {
     id: "food-4",
@@ -140,7 +141,8 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "medical",
     essential: true,
     quantity: "1 bottle",
-    regionNote: "Mesa UV index regularly hits extreme (11+) — sunburn is a real emergency risk",
+    regionNote:
+      "Mesa UV index regularly hits extreme (11+) — sunburn is a real emergency risk",
   },
   {
     id: "medical-4",
@@ -156,7 +158,8 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "medical",
     essential: true,
     quantity: "4 packs",
-    regionNote: "Essential for heat exhaustion first response — activate and apply to neck/armpits",
+    regionNote:
+      "Essential for heat exhaustion first response — activate and apply to neck/armpits",
   },
   {
     id: "medical-6",
@@ -164,7 +167,8 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "medical",
     essential: true,
     quantity: "2",
-    regionNote: "Soak and wear around neck — can drop body temp 20-30°F in extreme heat",
+    regionNote:
+      "Soak and wear around neck — can drop body temp 20-30°F in extreme heat",
   },
   {
     id: "medical-7",
@@ -172,7 +176,8 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "medical",
     essential: false,
     quantity: "1 pack",
-    regionNote: "Wildfire risk is significant — 48% of Mesa buildings face some wildfire exposure",
+    regionNote:
+      "Wildfire risk is significant — 48% of Mesa buildings face some wildfire exposure",
   },
 
   // Shelter & Protection
@@ -182,7 +187,8 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "shelter",
     essential: true,
     quantity: "1 (8x10 ft minimum)",
-    regionNote: "Doubles as flash flood water diverter and shade structure in desert sun",
+    regionNote:
+      "Doubles as flash flood water diverter and shade structure in desert sun",
   },
   {
     id: "shelter-2",
@@ -190,7 +196,8 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "shelter",
     essential: true,
     quantity: "4",
-    regionNote: "Reflects heat away when used as shade — not just for cold weather",
+    regionNote:
+      "Reflects heat away when used as shade — not just for cold weather",
   },
   {
     id: "shelter-3",
@@ -198,7 +205,8 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "shelter",
     essential: true,
     quantity: "4",
-    regionNote: "Critical for dust storms (haboobs) and wildfire smoke — Mesa gets both regularly",
+    regionNote:
+      "Critical for dust storms (haboobs) and wildfire smoke — Mesa gets both regularly",
   },
   {
     id: "shelter-4",
@@ -206,7 +214,8 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "shelter",
     essential: true,
     quantity: "2",
-    regionNote: "Wet bandana on neck for cooling; dry over face during dust storms",
+    regionNote:
+      "Wet bandana on neck for cooling; dry over face during dust storms",
   },
   {
     id: "shelter-5",
@@ -214,7 +223,8 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "shelter",
     essential: true,
     quantity: "2",
-    regionNote: "Monsoon storms dump heavy rain fast — flash flood risk is real in Maricopa County",
+    regionNote:
+      "Monsoon storms dump heavy rain fast — flash flood risk is real in Maricopa County",
   },
   {
     id: "shelter-6",
@@ -222,7 +232,8 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "shelter",
     essential: true,
     quantity: "1 roll",
-    regionNote: "Seal window gaps during dust storms to keep fine particulates out",
+    regionNote:
+      "Seal window gaps during dust storms to keep fine particulates out",
   },
 
   // Tools & Power
@@ -240,7 +251,8 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "tools",
     essential: true,
     quantity: "2 sets (AA and AAA)",
-    regionNote: "Heat degrades batteries faster — check and rotate every 6 months in AZ",
+    regionNote:
+      "Heat degrades batteries faster — check and rotate every 6 months in AZ",
   },
   {
     id: "tools-3",
@@ -300,7 +312,8 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "comms",
     essential: true,
     quantity: "1",
-    regionNote: "Mark evacuation routes and cooling centers — Mesa has designated heat relief stations",
+    regionNote:
+      "Mark evacuation routes and cooling centers — Mesa has designated heat relief stations",
   },
   {
     id: "comms-4",
@@ -334,7 +347,8 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "documents",
     essential: true,
     quantity: "1",
-    regionNote: "Flash floods can soak through standard containers — use a sealed dry bag",
+    regionNote:
+      "Flash floods can soak through standard containers — use a sealed dry bag",
   },
   {
     id: "documents-3",
@@ -369,7 +383,8 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "morale",
     essential: false,
     quantity: "6 packets",
-    regionNote: "The namesake — compact, shelf-stable, and a morale booster when things get tough",
+    regionNote:
+      "The namesake — compact, shelf-stable, and a morale booster when things get tough",
   },
   {
     id: "morale-2",

@@ -6,7 +6,7 @@ describe("useChecklist", () => {
   test("initial state has all items unchecked", () => {
     const { result } = renderHook(() => useChecklist());
     const allUnchecked = Object.values(result.current.state).every(
-      (v) => v === false
+      (v) => v === false,
     );
     expect(allUnchecked).toBe(true);
   });
@@ -48,7 +48,7 @@ describe("useChecklist", () => {
     });
 
     const allUnchecked = Object.values(result.current.state).every(
-      (v) => v === false
+      (v) => v === false,
     );
     expect(allUnchecked).toBe(true);
   });

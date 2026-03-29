@@ -1,8 +1,5 @@
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import {
-  CATEGORIES,
-  getItemsByCategory,
-} from "@cafe-listo/shared";
+import { CATEGORIES, getItemsByCategory } from "@cafe-listo/shared";
 import { useChecklist } from "../hooks/useChecklist";
 import { CategorySection } from "../components/CategorySection";
 
