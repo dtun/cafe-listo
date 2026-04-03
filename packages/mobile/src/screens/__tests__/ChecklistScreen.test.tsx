@@ -1,25 +1,50 @@
-import { render, fireEvent } from "@testing-library/react-native";
+import { render, fireEvent, waitFor } from "@testing-library/react-native";
 import { ChecklistScreen } from "../ChecklistScreen";
 import { CATEGORIES, PREP_ITEMS } from "@cafe-listo/shared";
 
+// Mock expo-sqlite so the persister doesn't try to use a real database
+jest.mock("expo-sqlite", () => ({
+  openDatabaseSync: jest.fn(() => ({
+    execSync: jest.fn(),
+    getAllSync: jest.fn(() => []),
+    runSync: jest.fn(),
+  })),
+  addDatabaseChangeListener: jest.fn(() => ({ remove: jest.fn() })),
+}));
+
 describe("ChecklistScreen", () => {
-  test("renders all 8 category headers", () => {
-    const { getByText } = render(<ChecklistScreen />);
+  test("shows loading indicator while store is hydrating", () => {
+    const { getByTestId } = render(<ChecklistScreen />);
+    expect(getByTestId("loading-indicator")).toBeTruthy();
+  });
+
+  test("renders all 8 category headers", async () => {
+    const { getByText, queryByTestId } = render(<ChecklistScreen />);
+    await waitFor(() => {
+      expect(queryByTestId("loading-indicator")).toBeNull();
+    });
     for (const category of CATEGORIES) {
       expect(getByText(new RegExp(category.label))).toBeTruthy();
     }
   });
 
-  test("renders all items", () => {
-    const { getByText } = render(<ChecklistScreen />);
+  test("renders all items", async () => {
+    const { getByText, queryByTestId } = render(<ChecklistScreen />);
+    await waitFor(() => {
+      expect(queryByTestId("loading-indicator")).toBeNull();
+    });
     for (const item of PREP_ITEMS) {
       expect(getByText(item.name)).toBeTruthy();
     }
   });
 
-  test("tapping an item toggles its checked state", () => {
+  test("tapping an item toggles its checked state", async () => {
     const firstItem = PREP_ITEMS[0];
-    const { getByTestId } = render(<ChecklistScreen />);
+    const { getByTestId, queryByTestId } = render(<ChecklistScreen />);
+
+    await waitFor(() => {
+      expect(queryByTestId("loading-indicator")).toBeNull();
+    });
 
     expect(getByTestId(`checkbox-${firstItem.id}`).props.children).toBe("☐");
 
@@ -28,8 +53,14 @@ describe("ChecklistScreen", () => {
     expect(getByTestId(`checkbox-${firstItem.id}`).props.children).toBe("☑");
   });
 
-  test("overall progress updates after toggling", () => {
-    const { getByText, getByTestId } = render(<ChecklistScreen />);
+  test("overall progress updates after toggling", async () => {
+    const { getByText, getByTestId, queryByTestId } = render(
+      <ChecklistScreen />,
+    );
+
+    await waitFor(() => {
+      expect(queryByTestId("loading-indicator")).toBeNull();
+    });
 
     expect(getByText(`0 / ${PREP_ITEMS.length} items ready`)).toBeTruthy();
 

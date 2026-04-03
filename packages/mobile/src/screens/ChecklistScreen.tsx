@@ -1,10 +1,24 @@
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { CATEGORIES, getItemsByCategory } from "@cafe-listo/shared";
 import { useChecklist } from "../hooks/useChecklist";
 import { CategorySection } from "../components/CategorySection";
 
 export function ChecklistScreen() {
-  const { state, toggle, progress } = useChecklist();
+  const { state, toggle, progress, loading } = useChecklist();
+
+  if (loading) {
+    return (
+      <View style={styles.loading} testID="loading-indicator">
+        <ActivityIndicator size="large" color="#1b5e20" />
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container} testID="checklist-screen">
@@ -31,6 +45,11 @@ export function ChecklistScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loading: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   header: {
     paddingVertical: 24,

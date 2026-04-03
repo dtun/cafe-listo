@@ -11,14 +11,14 @@ Emergency preparedness checklist app. pnpm monorepo with TypeScript (strict mode
 
 ## Scripts
 
-| Command | Description |
-|---------|-------------|
-| `pnpm test` | Run all test suites |
-| `pnpm typecheck` | `tsc --noEmit` across all packages |
-| `pnpm lint` | ESLint |
-| `pnpm lint:fix` | ESLint with auto-fix |
-| `pnpm format` | Prettier write |
-| `pnpm format:check` | Prettier check |
+| Command             | Description                        |
+| ------------------- | ---------------------------------- |
+| `pnpm test`         | Run all test suites                |
+| `pnpm typecheck`    | `tsc --noEmit` across all packages |
+| `pnpm lint`         | ESLint                             |
+| `pnpm lint:fix`     | ESLint with auto-fix               |
+| `pnpm format`       | Prettier write                     |
+| `pnpm format:check` | Prettier check                     |
 
 ## Conventions
 
