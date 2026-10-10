@@ -33,4 +33,12 @@ describe("layer isolation", () => {
       violations("usecases", [/^hono/, /^@supabase\//, /^zod/, /adapters\//]),
     ).toEqual([]);
   });
+
+  it("keeps routes and MCP wiring away from adapters and the DB client", () => {
+    const banned = [/^@supabase\//, /adapters\//];
+    expect([
+      ...violations("routes", banned),
+      ...violations("mcp", banned),
+    ]).toEqual([]);
+  });
 });
