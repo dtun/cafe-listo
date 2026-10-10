@@ -6,12 +6,17 @@
     "watchPatterns": [
       "packages/mcp-server/**",
       "packages/shared/**",
-      "pnpm-lock.yaml"
+      "package.json",
+      "pnpm-lock.yaml",
+      "pnpm-workspace.yaml",
+      ".npmrc",
+      ".nvmrc",
+      "railway.json"
     ]
   },
   "deploy": {
-    "startCommand": "node packages/mcp-server/dist/index.js",
-    "healthcheckPath": "/health",
+    "startCommand": "node --enable-source-maps packages/mcp-server/dist/index.js",
+    "healthcheckPath": "/ready",
     "healthcheckTimeout": 30,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
