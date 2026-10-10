@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { logInfo } from "./lib/log";
 import { createMcpRoutes, type McpRouteDeps } from "./routes/mcp";
+import { createOAuthRoutes } from "./routes/oauth";
 import { createWellKnownRoutes } from "./routes/well-known";
 
 export interface AppDeps {
@@ -32,6 +33,7 @@ export function createApp(deps: AppDeps = {}): Hono {
       "/.well-known",
       createWellKnownRoutes({ publicBaseUrl: deps.mcp.publicBaseUrl }),
     );
+    if (deps.mcp.oauth) app.route("/", createOAuthRoutes(deps.mcp.oauth));
     app.route("/mcp", createMcpRoutes(deps.mcp));
   }
 

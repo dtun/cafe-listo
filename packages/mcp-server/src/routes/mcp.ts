@@ -5,12 +5,15 @@ import type { RequestAuth, TokenVerifier } from "../auth/types";
 import type { UseCases } from "../container";
 import { protectedResourceMetadataUrl, publicBaseUrl } from "../lib/base-url";
 import { createMcpServer } from "../mcp/server";
+import type { OAuthUseCases } from "../usecases/oauth";
 
 export interface McpRouteDeps {
   verifier: TokenVerifier;
   /** Builds request-scoped use cases (adapters may forward the caller's token). */
   useCasesFor: (auth: RequestAuth) => UseCases;
   publicBaseUrl?: string;
+  /** The OAuth authorization server; omitted only in tests that exercise /mcp alone. */
+  oauth?: OAuthUseCases;
 }
 
 type Env = { Variables: { auth: RequestAuth } };
