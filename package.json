@@ -21,7 +21,10 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild"
-    ]
+    ],
+    "overrides": {
+      "jest-expo>react-server-dom-webpack": "19.0.2"
+    }
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
