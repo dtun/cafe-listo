@@ -7,21 +7,25 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#39;");
 }
 
+// Palette mirrors packages/landing/src/styles/variables.css so sign-in feels like the rest of Café Listo.
 const STYLE = `
-  :root { color-scheme: light dark; --bg: #faf7f2; --fg: #2b2118; --muted: #6b5d50; --accent: #b4532a; --card: #fff; --line: #e6ddd2; }
-  @media (prefers-color-scheme: dark) { :root { --bg: #1c1712; --fg: #f3ece4; --muted: #b5a797; --accent: #e07a4a; --card: #26201a; --line: #3a3128; } }
+  :root { color-scheme: light dark; --bg: #fffdf5; --fg: #1a1a1a; --muted: #4a3728; --primary: #b71c1c; --primary-dark: #7f0000; --yellow: #fdd835; --yellow-dark: #f9a825; --card: #fff; --line: #e0d6cc; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #141110; --fg: #fffdf5; --muted: #d7c9bb; --primary: #ef5350; --primary-dark: #ff8a80; --card: #221c19; --line: #3d332d; } }
   * { box-sizing: border-box; }
-  body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 16px; background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, sans-serif; }
-  main { width: 100%; max-width: 380px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 24px; }
-  h1 { font-size: 1.25rem; margin: 0 0 4px; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 16px; background: var(--bg); color: var(--fg); font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+  main { width: 100%; max-width: 380px; background: var(--card); border: 1px solid var(--line); border-top: 6px solid var(--primary); border-radius: 12px; padding: 24px; box-shadow: 0 8px 24px rgb(183 28 28 / 0.08); }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; color: var(--primary); }
   p { margin: 0 0 16px; color: var(--muted); }
-  label { display: block; font-size: .875rem; margin: 12px 0 4px; }
+  label { display: block; font-size: .875rem; font-weight: 600; margin: 12px 0 4px; }
   input[type=email], input[type=password] { width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: inherit; font: inherit; }
+  input:focus-visible, button:focus-visible { outline: 3px solid var(--yellow-dark); outline-offset: 2px; }
   .actions { display: flex; gap: 8px; margin-top: 20px; }
-  button { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--accent); font: inherit; cursor: pointer; }
-  button[value=signin] { background: var(--accent); color: #fff; }
-  button[value=signup] { background: transparent; color: var(--accent); }
-  .error { color: #c0392b; margin: 0 0 12px; }
+  button { flex: 1; padding: 10px; border-radius: 8px; border: 2px solid transparent; font: inherit; font-weight: 700; cursor: pointer; transition: background-color .2s; }
+  button[value=signin] { background: var(--yellow); color: #1a1a1a; }
+  button[value=signin]:hover { background: var(--yellow-dark); }
+  button[value=signup] { background: transparent; color: var(--primary); border-color: var(--primary); }
+  button[value=signup]:hover { color: var(--primary-dark); border-color: var(--primary-dark); }
+  .error { color: var(--primary); font-weight: 600; margin: 0 0 12px; }
   .destination { color: var(--fg); }
 `;
 
