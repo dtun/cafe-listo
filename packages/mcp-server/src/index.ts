@@ -10,7 +10,7 @@ const config = loadConfig(process.env);
 if (config.missing.length > 0) {
   logError("config_incomplete", {
     missing: config.missing,
-    effect: "/mcp is not mounted; /health still serves",
+    effect: "/mcp is not mounted; /health serves, /ready returns 503",
   });
 }
 

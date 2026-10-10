@@ -32,9 +32,18 @@ export function createApp(deps: AppDeps = {}): Hono {
     return c.json({ error: "internal_error" }, 500);
   });
 
-  // Mounted before anything that needs env or secrets so a misconfigured deploy still passes healthchecks.
+  // Liveness: needs no env or secrets, so it answers even when config is incomplete.
   app.get("/health", (c) =>
     c.json({ status: "ok", timestamp: new Date().toISOString() }),
+  );
+
+  // Readiness: the deploy healthcheck. Fails until /mcp and the OAuth routes are mounted,
+  // so a deploy with incomplete config never replaces a working one.
+  const ready = Boolean(deps.mcp?.oauth);
+  app.get("/ready", (c) =>
+    ready
+      ? c.json({ status: "ready" })
+      : c.json({ status: "not_ready", reason: "config_incomplete" }, 503),
   );
 
   if (deps.mcp) {
