@@ -6,6 +6,7 @@ import {
   toolMutates,
   toolRegistry,
   toolSchemas,
+  toolWriteHints,
 } from "../mcp/tool-registry";
 
 describe("toolRegistry", () => {
@@ -14,10 +15,20 @@ describe("toolRegistry", () => {
     expect(new Set(names).size).toBe(names.length);
   });
 
-  it("has a non-empty description for every tool", () => {
+  it("has a non-empty title and description for every tool", () => {
     for (const tool of toolRegistry) {
+      expect(tool.title.trim().length).toBeGreaterThan(0);
       expect(tool.description.trim().length).toBeGreaterThan(0);
     }
+  });
+
+  it("has write hints for exactly the mutating tools", () => {
+    expect(Object.keys(toolWriteHints).sort()).toEqual(
+      toolRegistry
+        .map((t) => t.name)
+        .filter((name) => toolMutates[name])
+        .sort(),
+    );
   });
 
   it("exposes the v1 tool set", () => {
@@ -111,5 +122,48 @@ describe("buildMcpToolList", () => {
     const tool = buildMcpToolList().find((t) => t.name === "set_item_done");
 
     expect(tool?.inputSchema.required).toEqual(["item_id", "done"]);
+  });
+
+  it("annotates read-only tools", () => {
+    for (const name of [
+      "list_categories",
+      "list_items",
+      "get_checklist",
+    ] as const) {
+      const tool = buildMcpToolList().find((t) => t.name === name);
+      expect(tool?.annotations).toEqual({
+        title: tool?.title,
+        readOnlyHint: true,
+      });
+    }
+  });
+
+  it("annotates set_item_done as an idempotent, non-destructive write", () => {
+    const tool = buildMcpToolList().find((t) => t.name === "set_item_done");
+
+    expect(tool?.annotations).toEqual({
+      title: "Mark item packed",
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+    });
+  });
+
+  it("annotates reset_checklist as an idempotent, destructive write", () => {
+    const tool = buildMcpToolList().find((t) => t.name === "reset_checklist");
+
+    expect(tool?.annotations).toEqual({
+      title: "Reset checklist",
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: true,
+    });
+  });
+
+  it("derives readOnlyHint from toolMutates", () => {
+    for (const tool of buildMcpToolList()) {
+      expect(tool.annotations.readOnlyHint).toBe(!toolMutates[tool.name]);
+      expect(tool.title).toBe(tool.annotations.title);
+    }
   });
 });

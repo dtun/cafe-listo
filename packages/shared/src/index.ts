@@ -14,6 +14,7 @@ export {
   toolSchemas,
 } from "./mcp/tool-registry";
 export type {
+  McpToolAnnotations,
   McpToolListing,
   ToolArgs,
   ToolDefinition,
