@@ -1,7 +1,13 @@
 import { Hono } from "hono";
 import { logInfo } from "./lib/log";
+import { createMcpRoutes, type McpRouteDeps } from "./routes/mcp";
 
-export function createApp(): Hono {
+export interface AppDeps {
+  /** Omitted when auth/storage config is missing: /mcp stays unmounted, /health still works. */
+  mcp?: McpRouteDeps;
+}
+
+export function createApp(deps: AppDeps = {}): Hono {
   const app = new Hono();
 
   app.use(async (c, next) => {
@@ -19,6 +25,10 @@ export function createApp(): Hono {
   app.get("/health", (c) =>
     c.json({ status: "ok", timestamp: new Date().toISOString() }),
   );
+
+  if (deps.mcp) {
+    app.route("/mcp", createMcpRoutes(deps.mcp));
+  }
 
   return app;
 }
