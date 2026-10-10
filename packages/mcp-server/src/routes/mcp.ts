@@ -1,5 +1,5 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 import type { RequestAuth, TokenVerifier } from "../auth/types";
 import type { UseCases } from "../container";
@@ -41,7 +41,8 @@ export function createMcpRoutes(deps: McpRouteDeps): Hono<Env> {
 
   app.use("*", async (c, next) => {
     const header = c.req.header("Authorization") ?? "";
-    const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+    // Auth schemes are case-insensitive (RFC 7235).
+    const token = /^Bearer\s+(.+)$/i.exec(header)?.[1].trim() ?? "";
     const auth = token ? await deps.verifier.verify(token) : null;
     if (!auth) {
       const base = publicBaseUrl(c.req.raw, deps.publicBaseUrl);
@@ -55,7 +56,16 @@ export function createMcpRoutes(deps: McpRouteDeps): Hono<Env> {
     await next();
   });
 
-  app.all("/", async (c) => {
+  // Stateless: no standalone SSE stream (GET) and no sessions to end (DELETE).
+  // Answer before building a transport so a GET can't hold a connection open.
+  const methodNotAllowed = (c: Context<Env>) => {
+    c.header("Allow", "POST");
+    return c.json({ error: "method_not_allowed" }, 405);
+  };
+  app.get("/", methodNotAllowed);
+  app.delete("/", methodNotAllowed);
+
+  app.post("/", async (c) => {
     const auth = c.get("auth");
     const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,

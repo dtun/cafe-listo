@@ -36,6 +36,26 @@ describe("POST /mcp auth", () => {
     );
   });
 
+  it("accepts the bearer scheme case-insensitively", async () => {
+    const { app } = createTestApp();
+    const req = rpc("tools/list");
+    req.headers.set("Authorization", "bearer token-for:alice");
+
+    const res = await app.fetch(req);
+
+    expect(res.status).toBe(200);
+  });
+
+  it("rejects other auth schemes", async () => {
+    const { app } = createTestApp();
+    const req = rpc("tools/list");
+    req.headers.set("Authorization", "Basic token-for:alice");
+
+    const res = await app.fetch(req);
+
+    expect(res.status).toBe(401);
+  });
+
   it("is not mounted when MCP is not configured", async () => {
     const app = createApp();
 
@@ -89,6 +109,42 @@ describe("POST /mcp protocol", () => {
 
     const body = await res.json();
     expect(body.result.tools).toEqual(buildMcpToolList());
+  });
+});
+
+describe("GET and DELETE /mcp", () => {
+  it.each(["GET", "DELETE"])(
+    "%s returns 405 with Allow: POST (stateless, no SSE stream or sessions)",
+    async (method) => {
+      const { app } = createTestApp();
+
+      const res = await app.fetch(
+        new Request("http://localhost/mcp", {
+          method,
+          headers: {
+            Authorization: "Bearer token-for:alice",
+            Accept: "text/event-stream",
+          },
+        }),
+      );
+
+      expect(res.status).toBe(405);
+      expect(res.headers.get("Allow")).toBe("POST");
+      expect(res.headers.get("Content-Type")).not.toContain(
+        "text/event-stream",
+      );
+    },
+  );
+
+  it("still challenges an unauthenticated GET so clients can discover OAuth", async () => {
+    const { app } = createTestApp();
+
+    const res = await app.fetch(
+      new Request("http://localhost/mcp", { method: "GET" }),
+    );
+
+    expect(res.status).toBe(401);
+    expect(res.headers.get("WWW-Authenticate")).toContain("resource_metadata");
   });
 });
 
