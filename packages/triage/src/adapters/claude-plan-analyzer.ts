@@ -77,7 +77,7 @@ export class ClaudePlanAnalyzer implements PlanAnalyzer {
         error instanceof ExecError
           ? stderrTail(error.stderr) || error.message
           : String(error);
-      throw new Error(`claude run failed: ${detail}`);
+      throw new Error(`claude run failed: ${detail}`, { cause: error });
     }
 
     let result: {

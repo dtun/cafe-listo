@@ -153,7 +153,9 @@ export class GhIssueTracker implements IssueTracker {
         error instanceof ExecError
           ? stderrTail(error.stderr) || error.message
           : String(error);
-      throw new Error(`gh ${args.slice(0, 2).join(" ")} failed: ${detail}`);
+      throw new Error(`gh ${args.slice(0, 2).join(" ")} failed: ${detail}`, {
+        cause: error,
+      });
     }
   }
 }

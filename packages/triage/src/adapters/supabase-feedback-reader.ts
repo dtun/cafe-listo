@@ -78,13 +78,16 @@ export class SupabaseFeedbackReader implements FeedbackReader {
       if (error instanceof ExecError && error.timedOut) {
         throw new Error(
           `supabase query timed out after ${this.timeoutMs / 1000}s, likely a Keychain prompt nobody answered; run \`supabase projects list\` once in a terminal to re-authorize Keychain access`,
+          { cause: error },
         );
       }
       const detail =
         error instanceof ExecError
           ? stderrTail(error.stderr) || error.message
           : String(error);
-      throw new Error(`supabase feedback query failed: ${detail}`);
+      throw new Error(`supabase feedback query failed: ${detail}`, {
+        cause: error,
+      });
     }
 
     let json: unknown;
