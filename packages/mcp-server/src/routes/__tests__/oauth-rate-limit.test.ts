@@ -99,6 +99,19 @@ describe("OAuth rate limiting", () => {
     expect(await res.text()).toContain("Too many sign-in attempts");
   });
 
+  it("forbids framing the /login 429 page", async () => {
+    const { app } = createTestApp({ oauthOptions: { clock: manualClock() } });
+    await exhaust(app, "login", "203.0.113.7");
+
+    const res = await app.fetch(requests.login("203.0.113.7"));
+
+    expect(res.status).toBe(429);
+    expect(res.headers.get("Content-Security-Policy")).toBe(
+      "frame-ancestors 'none'",
+    );
+    expect(res.headers.get("X-Frame-Options")).toBe("DENY");
+  });
+
   it("limits each client IP separately", async () => {
     const { app } = createTestApp({ oauthOptions: { clock: manualClock() } });
     await exhaust(app, "login", "203.0.113.7");

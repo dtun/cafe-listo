@@ -121,6 +121,16 @@ export function createOAuthRoutes(
 ): Hono {
   const app = new Hono();
 
+  // The sign-in page takes a password: never let another site frame it.
+  // Registered before the rate limiter so its 429 page is covered too.
+  const noFraming: MiddlewareHandler = async (c, next) => {
+    await next();
+    c.header("Content-Security-Policy", "frame-ancestors 'none'");
+    c.header("X-Frame-Options", "DENY");
+  };
+  app.use("/authorize", noFraming);
+  app.use("/login", noFraming);
+
   const clock = options.clock ?? systemClock;
   const rateLimit = (route: RateLimitedRoute): MiddlewareHandler => {
     const limiter = new FixedWindowRateLimiter(
@@ -160,15 +170,6 @@ export function createOAuthRoutes(
   app.post("/register", rateLimit("register"));
   app.post("/login", rateLimit("login"));
   app.post("/token", rateLimit("token"));
-
-  // The sign-in page takes a password: never let another site frame it.
-  const noFraming: MiddlewareHandler = async (c, next) => {
-    await next();
-    c.header("Content-Security-Policy", "frame-ancestors 'none'");
-    c.header("X-Frame-Options", "DENY");
-  };
-  app.use("/authorize", noFraming);
-  app.use("/login", noFraming);
 
   app.post("/register", async (c) => {
     const parsed = registerSchema.safeParse(
