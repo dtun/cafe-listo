@@ -17,6 +17,7 @@
     "@cafe-listo/shared": "workspace:*",
     "@hono/node-server": "^2.1.4",
     "@modelcontextprotocol/sdk": "^1.32.1",
+    "@supabase/supabase-js": "^2.117.3",
     "hono": "^4.13.13",
     "zod": "^4.3.6"
   },
