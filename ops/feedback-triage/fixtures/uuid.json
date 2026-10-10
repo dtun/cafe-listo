@@ -1,0 +1,25 @@
+{
+  "summary": "Three reports came in. Filed one feature, commented on one issue, skipped a smoke test.",
+  "actions": [
+    {
+      "type": "create_issue",
+      "feedback_ids": ["f1"],
+      "reason": "New need not covered by an existing issue.",
+      "title": "feat(mcp-server): support custom quantities per household member",
+      "body": "## Problem\nUsers want per-person quantities.\n\n## Evidence\n1 report this week.\n\n## Possible direction\n- Non-binding idea.\n\n## Open questions\nNone",
+      "labels": ["feedback", "needs-triage", "feature", "mcp-server"]
+    },
+    {
+      "type": "comment_issue",
+      "feedback_ids": ["f2"],
+      "reason": "Open issue #12 covers it.",
+      "issue_number": 12,
+      "body": "New feedback this week (1 report):\n- Household of 4 asked for the same thing.\nuser 3f2b8c1e-9a4d-4e6f-8b2a-1c3d5e7f9a0b"
+    },
+    {
+      "type": "skip",
+      "feedback_ids": ["f3"],
+      "reason": "Smoke test."
+    }
+  ]
+}
