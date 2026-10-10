@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildContainer } from "../container";
+import { buildContainer, supabaseUseCasesFor } from "../container";
 import { fixedClock } from "./fakes/fixed-clock";
 import { InMemoryChecklistRepository } from "./fakes/in-memory-checklist-repository";
 
@@ -25,5 +25,24 @@ describe("buildContainer", () => {
       },
     ]);
     expect(Object.isFrozen(usecases)).toBe(true);
+  });
+});
+
+describe("supabaseUseCasesFor", () => {
+  it("builds request-scoped use cases without touching the network", () => {
+    const useCasesFor = supabaseUseCasesFor({
+      url: "http://127.0.0.1:54321",
+      anonKey: "anon",
+    });
+
+    const usecases = useCasesFor({ userId: "u1", accessToken: "jwt" });
+
+    expect(Object.keys(usecases).sort()).toEqual([
+      "getChecklist",
+      "listCategories",
+      "listItems",
+      "resetChecklist",
+      "setItemDone",
+    ]);
   });
 });

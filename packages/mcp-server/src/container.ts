@@ -3,6 +3,9 @@ import {
   PREP_ITEMS,
   type ChecklistRepository,
 } from "@cafe-listo/shared";
+import { createUserSupabaseClient } from "./adapters/supabase/client";
+import { SupabaseChecklistRepository } from "./adapters/supabase/supabase-checklist-repository";
+import type { RequestAuth } from "./auth/types";
 import { GetChecklist } from "./usecases/get-checklist";
 import { ListCategories } from "./usecases/list-categories";
 import { ListItems } from "./usecases/list-items";
@@ -46,4 +49,28 @@ export function buildContainer(
     setItemDone: new SetItemDone(repo, catalog, clock),
     resetChecklist: new ResetChecklist(repo),
   });
+}
+
+export interface SupabaseConfig {
+  url: string;
+  anonKey: string;
+}
+
+/** Per-request use cases backed by Supabase, acting as the caller so RLS applies. */
+export function supabaseUseCasesFor(
+  config: SupabaseConfig,
+  overrides: ContainerOverrides = {},
+): (auth: RequestAuth) => UseCases {
+  return (auth) =>
+    buildContainer(
+      {
+        checklistRepository: new SupabaseChecklistRepository(
+          createUserSupabaseClient({
+            ...config,
+            accessToken: auth.accessToken,
+          }),
+        ),
+      },
+      overrides,
+    );
 }
