@@ -12,9 +12,13 @@ interface ScriptedResult {
 
 /**
  * Minimal chainable stand-in for the supabase-js query builder. Records every
- * call and resolves the chain (when awaited) to the scripted result.
+ * call and resolves the chain (when awaited) to the scripted result. Pass an
+ * array to script successive awaits; the last result repeats.
  */
-export function createFakeSupabase(result: ScriptedResult = {}) {
+export function createFakeSupabase(
+  scripted: ScriptedResult | ScriptedResult[] = {},
+) {
+  const results = Array.isArray(scripted) ? [...scripted] : [scripted];
   const calls: RecordedCall[] = [];
   const builder: Record<string, unknown> = {};
   for (const method of [
@@ -24,6 +28,7 @@ export function createFakeSupabase(result: ScriptedResult = {}) {
     "upsert",
     "insert",
     "delete",
+    "lt",
     "maybeSingle",
   ]) {
     builder[method] = (...args: unknown[]) => {
@@ -31,8 +36,10 @@ export function createFakeSupabase(result: ScriptedResult = {}) {
       return builder;
     };
   }
-  builder.then = (resolve: (value: unknown) => unknown) =>
-    resolve({ data: result.data ?? null, error: result.error ?? null });
+  builder.then = (resolve: (value: unknown) => unknown) => {
+    const result = (results.length > 1 ? results.shift() : results[0]) ?? {};
+    return resolve({ data: result.data ?? null, error: result.error ?? null });
+  };
 
   return { client: builder as unknown as SupabaseClient, calls };
 }

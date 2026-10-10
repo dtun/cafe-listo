@@ -1,12 +1,14 @@
 import { RepositoryError } from "@cafe-listo/shared";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { logError } from "../../lib/log";
 import type {
   AuthCodeRecord,
   AuthCodeStore,
   OAuthClient,
   OAuthClientStore,
 } from "../../usecases/oauth/ports";
+import { systemClock, type Clock } from "../../usecases/types";
 import type { Database } from "./database.types";
 import { toRepositoryError } from "./errors";
 
@@ -73,7 +75,10 @@ export class SupabaseOAuthClientStore implements OAuthClientStore {
 }
 
 export class SupabaseAuthCodeStore implements AuthCodeStore {
-  constructor(private readonly client: SupabaseClient<Database>) {}
+  constructor(
+    private readonly client: SupabaseClient<Database>,
+    private readonly clock: Clock = systemClock,
+  ) {}
 
   async save(record: AuthCodeRecord): Promise<void> {
     const { error } = await this.client.from("oauth_codes").insert({
@@ -86,6 +91,25 @@ export class SupabaseAuthCodeStore implements AuthCodeStore {
       expires_at: record.expiresAt.toISOString(),
     });
     if (error) throw toRepositoryError(error);
+    await this.purgeExpired();
+  }
+
+  /**
+   * Abandoned flows leave codes behind, each holding a live refresh token.
+   * Best-effort: a failed purge is logged and retried on the next save.
+   */
+  private async purgeExpired(): Promise<void> {
+    let message: string | undefined;
+    try {
+      const { error } = await this.client
+        .from("oauth_codes")
+        .delete()
+        .lt("expires_at", this.clock.now().toISOString());
+      message = error?.message;
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+    if (message) logError("oauth_codes_purge_failed", { error: message });
   }
 
   /** One DELETE ... RETURNING, so two concurrent exchanges can't both win. Expired codes are burned too. */

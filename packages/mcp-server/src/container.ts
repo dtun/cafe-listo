@@ -95,10 +95,11 @@ export function supabaseOAuthUseCases(
   overrides: ContainerOverrides = {},
 ): OAuthUseCases {
   const service = createServiceSupabaseClient(config);
+  const clock = overrides.clock ?? systemClock;
   return buildOAuthUseCases({
     clients: new SupabaseOAuthClientStore(service),
-    codes: new SupabaseAuthCodeStore(service),
+    codes: new SupabaseAuthCodeStore(service, clock),
     identity: new SupabaseIdentityProvider(createAnonSupabaseClient(config)),
-    clock: overrides.clock ?? systemClock,
+    clock,
   });
 }

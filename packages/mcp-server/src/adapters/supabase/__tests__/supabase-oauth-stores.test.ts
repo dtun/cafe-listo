@@ -1,9 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { fixedClock } from "../../../__tests__/fakes/fixed-clock";
+import { logError } from "../../../lib/log";
 import {
   SupabaseAuthCodeStore,
   SupabaseOAuthClientStore,
 } from "../supabase-oauth-stores";
 import { createFakeSupabase } from "./fake-supabase";
+
+vi.mock("../../../lib/log", () => ({ logInfo: vi.fn(), logError: vi.fn() }));
+
+const NOW = "2026-01-01T00:00:00.000Z";
 
 const CLIENT_ROW = {
   client_id: "c1",
@@ -79,10 +85,10 @@ describe("SupabaseAuthCodeStore", () => {
     expiresAt: new Date("2026-01-01T00:10:00Z"),
   };
 
-  it("inserts a code row", async () => {
+  it("inserts a code row, then purges expired codes", async () => {
     const { client, calls } = createFakeSupabase();
 
-    await new SupabaseAuthCodeStore(client).save(record);
+    await new SupabaseAuthCodeStore(client, fixedClock(NOW)).save(record);
 
     expect(calls).toEqual([
       { method: "from", args: ["oauth_codes"] },
@@ -90,7 +96,37 @@ describe("SupabaseAuthCodeStore", () => {
         method: "insert",
         args: [{ ...CODE_ROW, expires_at: "2026-01-01T00:10:00.000Z" }],
       },
+      { method: "from", args: ["oauth_codes"] },
+      { method: "delete", args: [] },
+      { method: "lt", args: ["expires_at", NOW] },
     ]);
+  });
+
+  it("throws when the insert fails and skips the purge", async () => {
+    const { client, calls } = createFakeSupabase({
+      error: { code: "23503", message: "fk violation" },
+    });
+
+    await expect(
+      new SupabaseAuthCodeStore(client, fixedClock(NOW)).save(record),
+    ).rejects.toThrow();
+    expect(calls.map((c) => c.method)).toEqual(["from", "insert"]);
+  });
+
+  it("still saves when the purge fails, and logs it", async () => {
+    vi.mocked(logError).mockClear();
+    const { client } = createFakeSupabase([
+      {},
+      { error: { code: "57014", message: "statement timeout" } },
+    ]);
+
+    await expect(
+      new SupabaseAuthCodeStore(client, fixedClock(NOW)).save(record),
+    ).resolves.toBeUndefined();
+    expect(logError).toHaveBeenCalledWith(
+      "oauth_codes_purge_failed",
+      expect.objectContaining({ error: "statement timeout" }),
+    );
   });
 
   it("consumes with a single delete-returning", async () => {
