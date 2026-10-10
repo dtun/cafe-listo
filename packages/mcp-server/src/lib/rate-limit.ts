@@ -55,10 +55,19 @@ export class FixedWindowRateLimiter {
 }
 
 /**
- * The client IP: the first X-Forwarded-For entry (set by the hosting proxy),
- * falling back to the socket's remote address.
+ * The client IP as seen by the hosting edge proxy. Railway's edge sets
+ * X-Real-IP and appends the real IP to X-Forwarded-For, keeping whatever the
+ * client sent in front of it. So: X-Real-IP, then the LAST X-Forwarded-For
+ * entry, then the socket's remote address. Never the first entry, which the
+ * client controls.
  */
 export function clientIp(req: Request, remoteAddress?: string): string {
-  const forwarded = req.headers.get("X-Forwarded-For")?.split(",")[0].trim();
-  return forwarded || remoteAddress || "unknown";
+  const realIp = req.headers.get("X-Real-IP")?.trim();
+  const forwarded = req.headers
+    .get("X-Forwarded-For")
+    ?.split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .at(-1);
+  return realIp || forwarded || remoteAddress || "unknown";
 }

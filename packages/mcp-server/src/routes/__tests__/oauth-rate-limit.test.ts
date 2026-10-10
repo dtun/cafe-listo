@@ -14,9 +14,12 @@ function manualClock() {
   };
 }
 
+let nextSpoof = 1;
+
 function fromIp(ip: string, path: string, init: RequestInit): Request {
   const req = new Request(`${BASE}${path}`, init);
-  req.headers.set("X-Forwarded-For", `${ip}, 10.0.0.1`);
+  // A client can prepend anything; Railway's edge appends the real IP last.
+  req.headers.set("X-Forwarded-For", `198.18.0.${nextSpoof++}, ${ip}`);
   return req;
 }
 

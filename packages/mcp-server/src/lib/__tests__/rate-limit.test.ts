@@ -55,16 +55,35 @@ describe("FixedWindowRateLimiter", () => {
 });
 
 describe("clientIp", () => {
-  it("uses the first X-Forwarded-For entry", () => {
-    const req = new Request("http://localhost/", {
-      headers: { "X-Forwarded-For": "203.0.113.7, 10.0.0.1" },
-    });
+  const req = (headers: Record<string, string>) =>
+    new Request("http://localhost/", { headers });
 
-    expect(clientIp(req, "10.0.0.2")).toBe("203.0.113.7");
+  it("prefers X-Real-IP, which the edge proxy sets", () => {
+    expect(
+      clientIp(
+        req({ "X-Real-IP": "203.0.113.7", "X-Forwarded-For": "1.2.3.4" }),
+        "10.0.0.2",
+      ),
+    ).toBe("203.0.113.7");
+  });
+
+  it("otherwise uses the last X-Forwarded-For entry (appended by the edge)", () => {
+    expect(
+      clientIp(req({ "X-Forwarded-For": "1.2.3.4, 203.0.113.7" }), "10.0.0.2"),
+    ).toBe("203.0.113.7");
+  });
+
+  it("ignores a client-spoofed first X-Forwarded-For entry", () => {
+    const spoofed = ["1.1.1.1", "2.2.2.2", "3.3.3.3"].map((fake) =>
+      clientIp(req({ "X-Forwarded-For": `${fake}, 203.0.113.7` })),
+    );
+
+    expect(new Set(spoofed)).toEqual(new Set(["203.0.113.7"]));
   });
 
   it("falls back to the remote address", () => {
-    expect(clientIp(new Request("http://localhost/"), "10.0.0.2")).toBe(
+    expect(clientIp(req({}), "10.0.0.2")).toBe("10.0.0.2");
+    expect(clientIp(req({ "X-Forwarded-For": " , " }), "10.0.0.2")).toBe(
       "10.0.0.2",
     );
   });

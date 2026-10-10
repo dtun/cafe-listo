@@ -47,7 +47,7 @@ Then run `/mcp` in Claude Code to authenticate.
 | `POST /login`                                     | Signs in or signs up, then redirects with a code  |
 | `POST /token`                                     | `authorization_code` and `refresh_token` grants   |
 
-`POST /login`, `/register`, and `/token` are rate limited per client IP (the first `X-Forwarded-For` entry): login 10 per minute, register 10 per hour, token 60 per minute. The limits live in `OAUTH_RATE_LIMITS` in `src/routes/oauth.ts`. Counters are in memory, so they reset on restart and are not shared between replicas. Over the limit, `/token` and `/register` return a `429` OAuth error and `/login` returns an error page, each with `Retry-After`. Keep Supabase Auth's own rate limits at or above these.
+`POST /login`, `/register`, and `/token` are rate limited per client IP (`X-Real-IP`, else the last `X-Forwarded-For` entry, which Railway's edge appends; the first entry is client-controlled and never used): login 10 per minute, register 10 per hour, token 60 per minute. The limits live in `OAUTH_RATE_LIMITS` in `src/routes/oauth.ts`. Counters are in memory, so they reset on restart and are not shared between replicas. Over the limit, `/token` and `/register` return a `429` OAuth error and `/login` returns an error page, each with `Retry-After`. Keep Supabase Auth's own rate limits at or above these.
 
 The sign-in page shows the host the user will be sent back to next to the client name, because anyone can register a client with any name. It cannot be framed (`frame-ancestors 'none'`, `X-Frame-Options: DENY`).
 
