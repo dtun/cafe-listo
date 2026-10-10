@@ -10,7 +10,8 @@ set -euo pipefail
 
 LABEL="com.cafe-listo.feedback-triage"
 SRC_DIR=$(cd "$(dirname "$0")" && pwd)
-REPO_DIR=$(cd "$SRC_DIR/../.." && pwd)
+# The main checkout, even when run from a worktree (worktrees lack the supabase link and may vanish).
+REPO_DIR=$(dirname "$(git -C "$SRC_DIR" rev-parse --path-format=absolute --git-common-dir)")
 TRIAGE_HOME="${CAFE_LISTO_TRIAGE_HOME:-$HOME/.cafe-listo/feedback-triage}"
 AGENTS_DIR="${LAUNCH_AGENTS_DIR:-$HOME/Library/LaunchAgents}"
 PLIST="$AGENTS_DIR/$LABEL.plist"
@@ -33,6 +34,9 @@ if [ "$MODE" = uninstall ]; then
   exit 0
 fi
 
+[ -f "$REPO_DIR/supabase/.temp/project-ref" ] \
+  || { echo "no linked Supabase project in $REPO_DIR; run supabase link there first" >&2; exit 1; }
+
 render() { sed -e "s|@@TRIAGE_HOME@@|$TRIAGE_HOME|g" -e "s|@@REPO_DIR@@|$REPO_DIR|g" "$1"; }
 
 mkdir -p "$TRIAGE_HOME/state" "$TRIAGE_HOME/runs" "$AGENTS_DIR"
@@ -53,6 +57,12 @@ echo "wrote $TRIAGE_HOME/launch.sh and $PLIST"
 
 if [ "$MODE" = install ]; then
   unload
-  launchctl bootstrap "$DOMAIN" "$PLIST"
-  echo "loaded $LABEL into $DOMAIN"
+  # bootstrap right after bootout can fail with "5: Input/output error" while launchd tears down.
+  for attempt in 1 2 3 4 5; do
+    if launchctl bootstrap "$DOMAIN" "$PLIST"; then echo "loaded $LABEL into $DOMAIN"; exit 0; fi
+    echo "bootstrap attempt $attempt failed; retrying" >&2
+    sleep 1
+  done
+  echo "could not load $LABEL" >&2
+  exit 1
 fi
