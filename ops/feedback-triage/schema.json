@@ -1,0 +1,29 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["summary", "actions"],
+  "properties": {
+    "summary": { "type": "string", "maxLength": 2000 },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "feedback_ids", "reason"],
+        "properties": {
+          "type": { "enum": ["create_issue", "comment_issue", "skip"] },
+          "feedback_ids": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string" }
+          },
+          "reason": { "type": "string", "maxLength": 500 },
+          "title": { "type": "string", "maxLength": 120 },
+          "body": { "type": "string", "maxLength": 6000 },
+          "labels": { "type": "array", "items": { "type": "string" } },
+          "issue_number": { "type": "integer" }
+        }
+      }
+    }
+  }
+}

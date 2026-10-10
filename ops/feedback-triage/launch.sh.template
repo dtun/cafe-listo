@@ -1,0 +1,11 @@
+#!/bin/bash
+# Rendered by ops/feedback-triage/install.sh. Runs the triage routine from reviewed origin/main code.
+set -euo pipefail
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin:$PATH"
+export CAFE_LISTO_TRIAGE_HOME="@@TRIAGE_HOME@@"
+export REPO_DIR="@@REPO_DIR@@"
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+git -C "$REPO_DIR" fetch -q origin main
+git -C "$REPO_DIR" archive origin/main ops/feedback-triage | tar -x -C "$tmp"
+"$tmp/ops/feedback-triage/run.sh" "$@"

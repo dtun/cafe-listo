@@ -29,6 +29,13 @@ yarn-error.*
 # Env
 .env*.local
 
+# Feedback triage local state (normally lives in ~/.cafe-listo/feedback-triage)
+ops/feedback-triage/state/
+ops/feedback-triage/runs/
+ops/feedback-triage/config.env
+ops/feedback-triage/launch.sh
+ops/feedback-triage/launchd.log
+
 # Kotlin
 .kotlin/
 
