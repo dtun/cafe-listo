@@ -25,6 +25,7 @@ describe("row level security", () => {
     expect(tables).toEqual(
       expect.arrayContaining([
         "checklist_entries",
+        "feedback",
         "oauth_clients",
         "oauth_codes",
       ]),
@@ -50,5 +51,31 @@ describe("row level security", () => {
     expect(policy).toBeDefined();
     expect(policy).toMatch(new RegExp(`using\\s*${ownRow}`, "i"));
     expect(policy).toMatch(new RegExp(`with check\\s*${ownRow}`, "i"));
+  });
+
+  describe("feedback", () => {
+    const policies = [
+      ...sql.matchAll(/create policy[^;]*?on public\.feedback\b([^;]*);/gi),
+    ].map((m) => m[1].replace(/\s+/g, " "));
+    const ownRow = String.raw`\(\s*\(?\s*(?:select\s+)?auth\.uid\(\)\s*\)?\s*=\s*user_id\s*\)`;
+
+    it("has exactly one policy: authenticated may insert their own rows", () => {
+      expect(policies).toHaveLength(1);
+      expect(policies[0]).toMatch(/for insert to authenticated/i);
+      expect(policies[0]).toMatch(new RegExp(`with check\\s*${ownRow}`, "i"));
+      expect(policies[0]).not.toMatch(/using/i);
+    });
+
+    it("grants authenticated insert only and anon nothing", () => {
+      expect(sql).toMatch(
+        /revoke all on public\.feedback from anon, authenticated;/i,
+      );
+      const grants = [
+        ...sql.matchAll(
+          /grant ([a-z, ]+) on public\.feedback to ([a-z, ]+);/gi,
+        ),
+      ].map((m) => [m[1].trim().toLowerCase(), m[2].trim().toLowerCase()]);
+      expect(grants).toEqual([["insert", "authenticated"]]);
+    });
   });
 });

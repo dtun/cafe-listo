@@ -2,12 +2,16 @@ import { describe, expect, it } from "vitest";
 import { buildContainer, supabaseUseCasesFor } from "../container";
 import { fixedClock } from "./fakes/fixed-clock";
 import { InMemoryChecklistRepository } from "./fakes/in-memory-checklist-repository";
+import { InMemoryFeedbackRepository } from "./fakes/in-memory-feedback-repository";
 
 describe("buildContainer", () => {
   it("wires use cases to the injected repository and clock", async () => {
     const repo = new InMemoryChecklistRepository();
     const usecases = buildContainer(
-      { checklistRepository: repo },
+      {
+        checklistRepository: repo,
+        feedbackRepository: new InMemoryFeedbackRepository(),
+      },
       { clock: fixedClock("2026-05-05T00:00:00.000Z") },
     );
 
@@ -43,6 +47,7 @@ describe("supabaseUseCasesFor", () => {
       "listItems",
       "resetChecklist",
       "setItemDone",
+      "submitFeedback",
     ]);
   });
 });

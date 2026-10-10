@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   checklistEntryColumns,
+  feedbackColumns,
   oauthClientColumns,
   oauthCodeColumns,
 } from "../database.types";
@@ -45,6 +46,10 @@ describe("schema drift", () => {
     expect([...checklistEntryColumns].sort()).toEqual(
       migrationColumns("checklist_entries"),
     );
+  });
+
+  it("feedback row type matches the migrations", () => {
+    expect([...feedbackColumns].sort()).toEqual(migrationColumns("feedback"));
   });
 
   it("oauth_clients row type matches the migrations", () => {

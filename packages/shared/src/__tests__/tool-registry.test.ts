@@ -2,7 +2,10 @@ import { CATEGORIES } from "../seed-data";
 import {
   buildMcpToolList,
   categoryIdSchema,
+  feedbackKindSchema,
   isToolName,
+  mcpServerInstructions,
+  TOOL_NAMES,
   toolMutates,
   toolRegistry,
   toolSchemas,
@@ -38,7 +41,14 @@ describe("toolRegistry", () => {
       "list_items",
       "reset_checklist",
       "set_item_done",
+      "submit_feedback",
     ]);
+  });
+
+  it("lists every registry tool in TOOL_NAMES", () => {
+    expect([...TOOL_NAMES].sort()).toEqual(
+      toolRegistry.map((t) => t.name).sort(),
+    );
   });
 
   it("classifies every tool as mutating or not", () => {
@@ -48,6 +58,46 @@ describe("toolRegistry", () => {
     expect(toolMutates.set_item_done).toBe(true);
     expect(toolMutates.reset_checklist).toBe(true);
     expect(toolMutates.get_checklist).toBe(false);
+    expect(toolMutates.submit_feedback).toBe(true);
+  });
+
+  it("tells the model to get explicit consent before submitting feedback", () => {
+    const tool = toolRegistry.find((t) => t.name === "submit_feedback");
+
+    expect(tool?.description).toMatch(/explicit yes/i);
+    expect(tool?.description).toMatch(/never include secrets/i);
+    expect(tool?.description).toMatch(/more than once/i);
+  });
+
+  it("keeps model-facing copy provider-agnostic", () => {
+    const copy = [
+      mcpServerInstructions,
+      ...toolRegistry.map((t) => t.description),
+    ].join(" ");
+
+    expect(copy).not.toMatch(/claude|anthropic/i);
+  });
+});
+
+describe("mcpServerInstructions", () => {
+  it("mentions submit_feedback and only real tool names", () => {
+    expect(mcpServerInstructions).toContain("submit_feedback");
+    const mentioned = mcpServerInstructions.match(/\b[a-z]+(?:_[a-z]+)+\b/g);
+    for (const name of mentioned ?? []) {
+      expect(isToolName(name)).toBe(true);
+    }
+  });
+});
+
+describe("feedbackKindSchema", () => {
+  it("accepts exactly the feedback kinds", () => {
+    expect([...feedbackKindSchema.options].sort()).toEqual([
+      "bug",
+      "content_error",
+      "gap",
+      "idea",
+      "other",
+    ]);
   });
 });
 
@@ -97,6 +147,67 @@ describe("toolSchemas", () => {
     expect(toolSchemas.set_item_done.safeParse({ done: true }).success).toBe(
       false,
     );
+  });
+});
+
+describe("submit_feedback schema", () => {
+  const schema = toolSchemas.submit_feedback;
+
+  it("accepts a minimal and a full submission", () => {
+    expect(
+      schema.safeParse({ kind: "gap", summary: "No pet food" }).success,
+    ).toBe(true);
+    expect(
+      schema.safeParse({
+        kind: "content_error",
+        summary: "Water quantity looks low",
+        details: "Recommends 1 gallon total for a family of four.",
+        tool_name: "list_items",
+        item_id: "water-1",
+        user_quote: "that can't be right",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects an unknown kind, a blank summary, and an unknown tool", () => {
+    expect(schema.safeParse({ kind: "rant", summary: "x" }).success).toBe(
+      false,
+    );
+    expect(schema.safeParse({ kind: "bug", summary: "   " }).success).toBe(
+      false,
+    );
+    expect(
+      schema.safeParse({ kind: "bug", summary: "x", tool_name: "drop_tables" })
+        .success,
+    ).toBe(false);
+  });
+
+  it("enforces length limits", () => {
+    const ok = { kind: "idea", summary: "x" } as const;
+    expect(schema.safeParse({ ...ok, summary: "a".repeat(500) }).success).toBe(
+      true,
+    );
+    expect(schema.safeParse({ ...ok, summary: "a".repeat(501) }).success).toBe(
+      false,
+    );
+    expect(schema.safeParse({ ...ok, details: "a".repeat(4001) }).success).toBe(
+      false,
+    );
+    expect(
+      schema.safeParse({ ...ok, user_quote: "a".repeat(1001) }).success,
+    ).toBe(false);
+    expect(schema.safeParse({ ...ok, item_id: "a".repeat(101) }).success).toBe(
+      false,
+    );
+  });
+
+  it("does not accept a user_id from the caller", () => {
+    const parsed = schema.safeParse({
+      ...{ kind: "bug", summary: "x" },
+      user_id: "bob",
+    });
+
+    expect(parsed.success && "user_id" in parsed.data).toBe(false);
   });
 });
 
@@ -158,6 +269,18 @@ describe("buildMcpToolList", () => {
       destructiveHint: true,
       idempotentHint: true,
     });
+  });
+
+  it("annotates submit_feedback as a non-idempotent, non-destructive write", () => {
+    const tool = buildMcpToolList().find((t) => t.name === "submit_feedback");
+
+    expect(tool?.annotations).toEqual({
+      title: "Send feedback",
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+    });
+    expect(tool?.inputSchema.required).toEqual(["kind", "summary"]);
   });
 
   it("derives readOnlyHint from toolMutates", () => {
