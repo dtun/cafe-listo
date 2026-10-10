@@ -19,3 +19,9 @@ export type {
   ToolDefinition,
   ToolName,
 } from "./mcp/tool-registry";
+export type { ChecklistEntry, ChecklistRepository } from "./checklist/ports";
+export {
+  ConflictError,
+  DomainError,
+  RepositoryError,
+} from "./checklist/errors";
