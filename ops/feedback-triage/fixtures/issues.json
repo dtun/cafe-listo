@@ -1,0 +1,34 @@
+[
+  {
+    "number": 12,
+    "state": "OPEN",
+    "title": "feat(mobile): offline mode",
+    "author": "dtun",
+    "labels": ["feature"],
+    "body": "Maintainer issue."
+  },
+  {
+    "number": 20,
+    "state": "OPEN",
+    "title": "Please add dark mode",
+    "author": "outsider",
+    "labels": [],
+    "body": "Opened by someone else."
+  },
+  {
+    "number": 30,
+    "state": "OPEN",
+    "title": "feat(shared): water per pet",
+    "author": "outsider",
+    "labels": ["feedback", "needs-triage"],
+    "body": "Filed by the routine (author differs only in this fixture)."
+  },
+  {
+    "number": 5,
+    "state": "CLOSED",
+    "title": "fix(mcp-server): list sync",
+    "author": "dtun",
+    "labels": ["bug"],
+    "body": "Closed recently."
+  }
+]
