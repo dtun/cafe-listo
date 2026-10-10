@@ -6,6 +6,7 @@ import type { UseCases } from "../container";
 import { protectedResourceMetadataUrl, publicBaseUrl } from "../lib/base-url";
 import { createMcpServer } from "../mcp/server";
 import type { OAuthUseCases } from "../usecases/oauth";
+import type { OAuthRouteOptions } from "./oauth";
 
 export interface McpRouteDeps {
   verifier: TokenVerifier;
@@ -14,6 +15,8 @@ export interface McpRouteDeps {
   publicBaseUrl?: string;
   /** The OAuth authorization server; omitted only in tests that exercise /mcp alone. */
   oauth?: OAuthUseCases;
+  /** Rate-limit clock and limits for the OAuth routes; defaults suit production. */
+  oauthOptions?: OAuthRouteOptions;
 }
 
 type Env = { Variables: { auth: RequestAuth } };

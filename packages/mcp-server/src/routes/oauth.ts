@@ -1,6 +1,12 @@
 import { Hono, type Context, type MiddlewareHandler } from "hono";
 import { z } from "zod";
+import {
+  clientIp,
+  FixedWindowRateLimiter,
+  type RateLimit,
+} from "../lib/rate-limit";
 import type { OAuthUseCases } from "../usecases/oauth";
+import { systemClock, type Clock } from "../usecases/types";
 import { errorPage, loginPage } from "./oauth-pages";
 
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
@@ -89,9 +95,62 @@ async function readForm(c: Context): Promise<Record<string, unknown>> {
   return (await c.req.parseBody()) as Record<string, unknown>;
 }
 
+/** Per-client-IP limits on the endpoints that reach Supabase Auth or write state. */
+export const OAUTH_RATE_LIMITS = {
+  login: { limit: 10, windowMs: 60_000 },
+  register: { limit: 10, windowMs: 60 * 60_000 },
+  token: { limit: 60, windowMs: 60_000 },
+} as const satisfies Record<string, RateLimit>;
+
+type RateLimitedRoute = keyof typeof OAUTH_RATE_LIMITS;
+
+export interface OAuthRouteOptions {
+  /** Drives the rate-limit windows; injectable for deterministic tests. */
+  clock?: Clock;
+  limits?: Partial<Record<RateLimitedRoute, RateLimit>>;
+}
+
 /** OAuth 2.1 authorization server: DCR, authorize + PKCE, login, token. */
-export function createOAuthRoutes(oauth: OAuthUseCases): Hono {
+export function createOAuthRoutes(
+  oauth: OAuthUseCases,
+  options: OAuthRouteOptions = {},
+): Hono {
   const app = new Hono();
+
+  const clock = options.clock ?? systemClock;
+  const rateLimit = (route: RateLimitedRoute): MiddlewareHandler => {
+    const limiter = new FixedWindowRateLimiter(
+      options.limits?.[route] ?? OAUTH_RATE_LIMITS[route],
+      clock,
+    );
+    return async (c, next) => {
+      const incoming = (
+        c.env as { incoming?: { socket?: { remoteAddress?: string } } }
+      )?.incoming;
+      const decision = limiter.hit(
+        clientIp(c.req.raw, incoming?.socket?.remoteAddress),
+      );
+      if (decision.allowed) return next();
+      c.header("Retry-After", String(decision.retryAfterSeconds));
+      if (route === "login") {
+        return c.html(
+          errorPage("Too many sign-in attempts. Wait a minute and try again."),
+          429,
+        );
+      }
+      c.header("Cache-Control", "no-store");
+      return c.json(
+        {
+          error: "temporarily_unavailable",
+          error_description: "Too many requests. Retry later.",
+        },
+        429,
+      );
+    };
+  };
+  app.post("/register", rateLimit("register"));
+  app.post("/login", rateLimit("login"));
+  app.post("/token", rateLimit("token"));
 
   // The sign-in page takes a password: never let another site frame it.
   const noFraming: MiddlewareHandler = async (c, next) => {

@@ -1,5 +1,6 @@
 import { createApp } from "../../app";
 import { buildContainer } from "../../container";
+import type { OAuthRouteOptions } from "../../routes/oauth";
 import { buildOAuthUseCases } from "../../usecases/oauth";
 import { fixedClock } from "./fixed-clock";
 import { fakeTokenVerifier } from "./fake-token-verifier";
@@ -10,7 +11,9 @@ import {
   InMemoryOAuthClientStore,
 } from "./in-memory-oauth-stores";
 
-export function createTestApp() {
+export function createTestApp(
+  options: { oauthOptions?: OAuthRouteOptions } = {},
+) {
   const repo = new InMemoryChecklistRepository();
   const identity = new FakeIdentityProvider();
   const clients = new InMemoryOAuthClientStore();
@@ -26,6 +29,7 @@ export function createTestApp() {
         identity,
         clock: { now: () => new Date() },
       }),
+      oauthOptions: options.oauthOptions,
     },
   });
   return { app, repo, identity, clients, codes };

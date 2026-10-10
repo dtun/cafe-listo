@@ -51,7 +51,9 @@ export function createApp(deps: AppDeps = {}): Hono {
       "/.well-known",
       createWellKnownRoutes({ publicBaseUrl: deps.mcp.publicBaseUrl }),
     );
-    if (deps.mcp.oauth) app.route("/", createOAuthRoutes(deps.mcp.oauth));
+    if (deps.mcp.oauth) {
+      app.route("/", createOAuthRoutes(deps.mcp.oauth, deps.mcp.oauthOptions));
+    }
     app.route("/mcp", createMcpRoutes(deps.mcp));
   }
 
