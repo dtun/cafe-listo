@@ -73,7 +73,9 @@ describe("TriageFeedback", () => {
       const [input] = w.analyzer.inputs;
       expect(JSON.stringify(input)).not.toMatch(/userId|aaaaaaaa|bbbbbbbb/);
       expect(input.feedback.map((f) => f.reporter)).toEqual(["r2", "r1", "r2"]);
-      expect(input.issues.map((i) => i.number).sort()).toEqual([5, 12, 20, 30]);
+      expect(input.issues.map((i) => i.number).sort((a, b) => a - b)).toEqual([
+        5, 12, 20, 30,
+      ]);
       expect(input.trustedAuthors).toEqual(["dtun"]);
       expect(w.tracker.closedSinceCalls).toEqual([
         new Date("2026-07-12T08:07:00.000Z"),
