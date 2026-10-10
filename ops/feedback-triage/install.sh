@@ -44,7 +44,6 @@ if [ ! -f "$TRIAGE_HOME/config.env" ]; then
 # Local config for the feedback triage routine (sourced by run.sh). Not in git.
 REPO_DIR="$REPO_DIR"
 REPO="dtun/cafe-listo"
-ENV_FILE="\$REPO_DIR/packages/mcp-server/.env"
 EOF
   echo "wrote $TRIAGE_HOME/config.env"
 fi

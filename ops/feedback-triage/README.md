@@ -2,7 +2,7 @@
 
 Weekly (Saturday 08:07 local) launchd job that turns new `submit_feedback` rows into GitHub issues and comments.
 
-1. Fetch `feedback` rows newer than the watermark from Supabase (service-role key read at run time from `packages/mcp-server/.env`). `user_id` is replaced with per-run aliases (`r1`, `r2`, …) before anything else sees it (`alias.jq`).
+1. Fetch `feedback` rows newer than the watermark with `supabase db query --linked` (your CLI login, the checkout's linked project; no keys on disk). Only the `.rows` of the CLI's untrusted-data wrapper are used, as data. `user_id` is replaced with per-run aliases (`r1`, `r2`, …) before anything else sees it (`alias.jq`).
 2. Fetch open issues plus issues closed in the last 90 days, for dedupe.
 3. Run headless `claude -p --tools "" --strict-mcp-config --no-session-persistence --json-schema schema.json` with `prompt.md`. Output: a JSON plan (`create_issue` / `comment_issue` / `skip`).
 4. Validate the plan (`validate.jq`). Any problem rejects the whole plan.
@@ -30,10 +30,12 @@ Weekly (Saturday 08:07 local) launchd job that turns new `submit_feedback` rows 
   - a label is outside the allowlist
   - a comment has no `issue_number` or targets an issue the model wasn't shown
 - **Labels**: allowlist in `run.sh` (`ALLOWED_LABELS`). Never `ready-for-agent`. Humans promote issues out of `needs-triage`.
-- **PII**: the repo is public. Titles/bodies matching an email, UUID, or US-style phone number are rejected. Raw user ids never leave the run dir, and `feedback.raw.json` is deleted after aliasing.
-- **Watermark** (`state/watermark`, max `created_at` of the batch) only advances after every action succeeds and never on `--dry-run`. A failed run retries the same batch next week. If a run fails partway through, some issues may already be filed. Check the run's `report.md`/`run.log` before re-running.
+- **PII**: the repo is public. Titles/bodies matching an email, UUID, or US-style phone number are rejected. Raw user ids never leave the run dir, and the raw query output is deleted after aliasing.
+- **Watermark** (`state/watermark`): the max `created_at` of the batch, stored as fixed-width UTC microseconds so it round-trips exactly. It must match a strict timestamp regex before it goes into the SQL. It advances only after every action succeeds and never on `--dry-run`. A failed run retries the same batch next week. If a run fails partway through, some issues may already be filed. Check the run's `report.md`/`run.log` before re-running.
 
 ## Install / uninstall
+
+Requires `supabase login` (CLI ≥ 2.120) with the project linked in the checkout (`supabase link`), plus `gh` and `claude` logins. The CLI token lives in the macOS Keychain. If launchd can't read it (a Keychain prompt with nobody there to answer), the query times out after 120s and the run fails. Fix it by running `supabase projects list` once in a terminal and allowing access.
 
 ```sh
 ops/feedback-triage/install.sh             # write launcher + config.env + plist, (re)load agent
@@ -41,13 +43,13 @@ ops/feedback-triage/install.sh --no-load   # write files only
 ops/feedback-triage/install.sh --uninstall # unload, remove plist + launcher (keeps state, runs, config.env)
 ```
 
-Idempotent. `config.env` is written only if absent (`REPO_DIR` = this checkout, `REPO`, `ENV_FILE`; `MAX_CREATES` can also go here). Env overrides: `CAFE_LISTO_TRIAGE_HOME`, `LAUNCH_AGENTS_DIR`.
+Idempotent. `config.env` is written only if absent (`REPO_DIR` = this checkout, `REPO`; `MAX_CREATES` can also go here). Env overrides: `CAFE_LISTO_TRIAGE_HOME`, `LAUNCH_AGENTS_DIR`.
 
 ## Run manually
 
 ```sh
 ~/.cafe-listo/feedback-triage/launch.sh --dry-run   # main code; real fetch + claude, files nothing, keeps watermark
-CAFE_LISTO_TRIAGE_HOME=/tmp/triage ops/feedback-triage/run.sh --dry-run   # working-tree code
+CAFE_LISTO_TRIAGE_HOME=/tmp/triage REPO_DIR=$PWD ops/feedback-triage/run.sh --dry-run   # working-tree code
 launchctl kickstart gui/$(id -u)/com.cafe-listo.feedback-triage           # real run now
 ```
 
@@ -55,7 +57,7 @@ Each run writes `runs/<timestamp>[-dry]/`: `feedback.json`, `issues.json`, `inpu
 
 ## Tests
 
-`bash ops/feedback-triage/test.sh` checks `validate.jq` and `alias.jq` against `fixtures/`. Needs only bash and jq. Runs in CI.
+`bash ops/feedback-triage/test.sh` checks `validate.jq`, `alias.jq` and the watermark regex against `fixtures/`. Needs only bash and jq. Runs in CI.
 
 ## Schedule
 

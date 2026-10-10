@@ -50,5 +50,22 @@ if [ "$(jq -c -f "$DIR/alias.jq" "$FX/feedback.raw.json")" = "$ALIASED" ]; then
   ok "alias: deterministic across runs"
 else ko "alias: output differs between runs"; fi
 
+# Watermark regex (taken from run.sh, matched the same way): it gates what gets interpolated into SQL.
+TS_RE=$(sed -n "s/^TIMESTAMP_RE='\(.*\)'$/\1/p" "$DIR/run.sh")
+[ -n "$TS_RE" ] || { echo "could not read TIMESTAMP_RE from run.sh"; exit 1; }
+for ts in "1970-01-01T00:00:00Z" "2026-10-10T19:07:28.514000Z" "2026-10-10 19:07:28.514+00" \
+  "2026-10-10 19:07:28+00:00" "2026-10-10T19:07:28-0700"; do
+  if [[ $ts =~ $TS_RE ]]; then ok "timestamp accepted: $ts"; else ko "timestamp rejected: $ts"; fi
+done
+for ts in "" "2026-10-10" "2026-10-10T19:07:28" "2026-10-10T19:07:28Z' or '1'='1" \
+  "2026-10-10T19:07:28Z; drop table feedback" "2026-10-10T19:07:28.1234567Z" $'2026-10-10T19:07:28Z\nx'; do
+  if [[ $ts =~ $TS_RE ]]; then ko "timestamp accepted: $ts"; else ok "timestamp rejected: $(printf '%q' "$ts")"; fi
+done
+
+# run.sh selects created_at as fixed-width UTC microseconds, so string max() is the chronological max.
+W=$(jq -rn '["2026-10-10T19:07:28.500000Z","2026-10-10T19:07:28.514000Z","2026-10-09T23:59:59.999999Z"] | max')
+if [ "$W" = "2026-10-10T19:07:28.514000Z" ] && [[ $W =~ $TS_RE ]]; then ok "watermark: max is chronological and re-validates"
+else ko "watermark: got $W"; fi
+
 echo "$PASS passed, $FAIL failed"
 [ "$FAIL" = 0 ]

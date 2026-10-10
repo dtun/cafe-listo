@@ -12,9 +12,10 @@ HOME_DIR="${CAFE_LISTO_TRIAGE_HOME:-$HOME/.cafe-listo/feedback-triage}"
 [ -f "$HOME_DIR/config.env" ] && . "$HOME_DIR/config.env"
 REPO_DIR="${REPO_DIR:-}"
 REPO="${REPO:-dtun/cafe-listo}"
-ENV_FILE="${ENV_FILE:-$REPO_DIR/packages/mcp-server/.env}"
 MAX_CREATES="${MAX_CREATES:-10}"
 WATERMARK_FILE="$HOME_DIR/state/watermark"
+# The watermark is interpolated into SQL, so it must look exactly like a timestamp.
+TIMESTAMP_RE='^[0-9]{4}-[0-9]{2}-[0-9]{2}[T ][0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,6})?(Z|[+-][0-9]{2}(:?[0-9]{2})?)$'
 ALLOWED_LABELS='["feedback","needs-triage","feature","bug","documentation","mcp-server","shared","mobile","landing"]'
 DRY_RUN=0; [ "${1:-}" = "--dry-run" ] && DRY_RUN=1
 
@@ -26,22 +27,34 @@ notify() { osascript -e "display notification \"$1\" with title \"Café Listo fe
 fail() { log "FAIL: $*"; notify "Failed: $*"; exit 1; }
 
 # --- 1. Fetch ---------------------------------------------------------------
-[ -f "$ENV_FILE" ] || fail "missing $ENV_FILE (set REPO_DIR or ENV_FILE in $HOME_DIR/config.env)"
-SUPABASE_URL=$(sed -n 's/^SUPABASE_URL=//p' "$ENV_FILE")
-SERVICE_KEY=$(sed -n 's/^SUPABASE_SERVICE_ROLE_KEY=//p' "$ENV_FILE")
-[ -n "$SUPABASE_URL" ] && [ -n "$SERVICE_KEY" ] || fail "Supabase settings missing in .env"
+# Uses the Supabase CLI login and the checkout's linked project (REPO_DIR/supabase/.temp); no keys are read.
+[ -n "$REPO_DIR" ] && [ -d "$REPO_DIR/supabase" ] || fail "REPO_DIR not a cafe-listo checkout (set it in $HOME_DIR/config.env)"
+command -v supabase >/dev/null || fail "supabase CLI not found"
 SINCE=$(cat "$WATERMARK_FILE" 2>/dev/null || echo "1970-01-01T00:00:00Z")
+[[ $SINCE =~ $TIMESTAMP_RE ]] || fail "watermark is not a timestamp: $SINCE"
 log "fetching feedback since $SINCE"
 
-curl -sf -G "$SUPABASE_URL/rest/v1/feedback" \
-  -H "apikey: $SERVICE_KEY" -H "Authorization: Bearer $SERVICE_KEY" \
-  --data-urlencode "select=id,user_id,created_at,kind,summary,details,tool_name,item_id,user_quote" \
-  --data-urlencode "created_at=gt.$SINCE" --data-urlencode "order=created_at.asc" --data-urlencode "limit=500" \
-  > "$RUN_DIR/feedback.raw.json" || fail "feedback fetch failed"
-
-# Replace user ids with per-run aliases (r1, r2, ...) before anything reaches the model; keep raw ids local.
-jq -f "$SCRIPT_DIR/alias.jq" "$RUN_DIR/feedback.raw.json" > "$RUN_DIR/feedback.json"
+# created_at is normalized to fixed-width UTC microseconds so string max() is the true max and
+# the watermark round-trips exactly through ::timestamptz.
+SQL="select id, user_id, to_char(created_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') as created_at,
+  kind, summary, details, tool_name, item_id, user_quote
+  from public.feedback where created_at > '$SINCE'::timestamptz order by created_at limit 500"
+TIMEOUT_CMD=$(command -v timeout || command -v gtimeout || true)
+RC=0
+${TIMEOUT_CMD:+$TIMEOUT_CMD 120} supabase --workdir "$REPO_DIR" db query --linked -o json "$SQL" < /dev/null \
+  > "$RUN_DIR/feedback.raw.json" 2> "$RUN_DIR/supabase.err" || RC=$?
+if [ "$RC" = 124 ]; then
+  fail "supabase query timed out (likely a Keychain prompt); run 'supabase projects list' once to re-authorize"
+elif [ "$RC" != 0 ]; then
+  tail -5 "$RUN_DIR/supabase.err"; fail "feedback query failed (exit $RC)"
+fi
+# The CLI wraps rows in {boundary, rows, warning} to mark them untrusted. Only .rows go on, as data.
+jq -e '.rows | arrays' "$RUN_DIR/feedback.raw.json" > "$RUN_DIR/feedback.rows.json" || fail "unexpected supabase output"
 rm -f "$RUN_DIR/feedback.raw.json"
+
+# Replace user ids with per-run aliases (r1, r2, ...) before anything reaches the model; raw ids are discarded.
+jq -f "$SCRIPT_DIR/alias.jq" "$RUN_DIR/feedback.rows.json" > "$RUN_DIR/feedback.json"
+rm -f "$RUN_DIR/feedback.rows.json"
 COUNT=$(jq length "$RUN_DIR/feedback.json")
 log "new feedback: $COUNT"
 if [ "$COUNT" = 0 ]; then log "nothing to do"; exit 0; fi
