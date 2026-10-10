@@ -1,13 +1,33 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createLocalJWKSet,
+  errors,
   exportJWK,
   generateKeyPair,
   SignJWT,
   type JWK,
   type CryptoKey,
 } from "jose";
+import { logError, logInfo } from "../../lib/log";
 import { createSupabaseJwtVerifier } from "../supabase-jwt-verifier";
+
+vi.mock("../../lib/log", () => ({ logInfo: vi.fn(), logError: vi.fn() }));
+
+beforeEach(() => {
+  vi.mocked(logInfo).mockClear();
+  vi.mocked(logError).mockClear();
+});
+
+/** The logged rejection; also asserts the token itself never reaches the logs. */
+function rejection(token: string) {
+  const calls = [
+    ...vi.mocked(logInfo).mock.calls,
+    ...vi.mocked(logError).mock.calls,
+  ];
+  expect(JSON.stringify(calls)).not.toContain(token);
+  const call = calls.find(([message]) => message === "token_rejected");
+  return call?.[1] as { reason: string } | undefined;
+}
 
 const SUPABASE_URL = "https://project.supabase.co";
 const ISSUER = `${SUPABASE_URL}/auth/v1`;
@@ -59,6 +79,11 @@ describe("createSupabaseJwtVerifier", () => {
       .sign(privateKey);
 
     expect(await verifier().verify(token)).toBeNull();
+    expect(rejection(token)?.reason).toBe("expired");
+    expect(logInfo).toHaveBeenCalledWith(
+      "token_rejected",
+      expect.objectContaining({ reason: "expired" }),
+    );
   });
 
   it("rejects the wrong issuer", async () => {
@@ -68,12 +93,14 @@ describe("createSupabaseJwtVerifier", () => {
     );
 
     expect(await verifier().verify(token)).toBeNull();
+    expect(rejection(token)?.reason).toBe("wrong_issuer");
   });
 
   it("rejects the wrong audience", async () => {
-    expect(
-      await verifier().verify(await sign({}, { audience: "anon" })),
-    ).toBeNull();
+    const token = await sign({}, { audience: "anon" });
+
+    expect(await verifier().verify(token)).toBeNull();
+    expect(rejection(token)?.reason).toBe("wrong_audience");
   });
 
   it("rejects a token signed by an unknown key", async () => {
@@ -87,10 +114,35 @@ describe("createSupabaseJwtVerifier", () => {
       .sign(other.privateKey);
 
     expect(await verifier().verify(token)).toBeNull();
+    expect(rejection(token)?.reason).toBe("bad_signature");
   });
 
   it("rejects garbage", async () => {
     expect(await verifier().verify("not-a-jwt")).toBeNull();
+    expect(rejection("not-a-jwt")?.reason).toBe("malformed");
+  });
+
+  it("logs JWKS fetch failures at error level", async () => {
+    const token = await sign();
+    for (const failure of [
+      new errors.JWKSTimeout(),
+      new TypeError("fetch failed"),
+    ]) {
+      vi.mocked(logError).mockClear();
+      const broken = createSupabaseJwtVerifier({
+        supabaseUrl: SUPABASE_URL,
+        jwks: async () => {
+          throw failure;
+        },
+      });
+
+      expect(await broken.verify(token)).toBeNull();
+      expect(logError).toHaveBeenCalledWith(
+        "token_rejected",
+        expect.objectContaining({ reason: "jwks_fetch_failed" }),
+      );
+      expect(rejection(token)?.reason).toBe("jwks_fetch_failed");
+    }
   });
 
   it("verifies legacy HS256 tokens when a JWT secret is configured", async () => {
@@ -111,5 +163,13 @@ describe("createSupabaseJwtVerifier", () => {
 
     expect(await withSecret.verify(token)).toEqual({ userId: USER });
     expect(await verifier().verify(token)).toBeNull();
+    expect(rejection(token)?.reason).toBe("hs256_not_configured");
+  });
+
+  it("does not log accepted tokens", async () => {
+    await verifier().verify(await sign());
+
+    expect(logInfo).not.toHaveBeenCalled();
+    expect(logError).not.toHaveBeenCalled();
   });
 });
