@@ -1,19 +1,34 @@
 import { createApp } from "../../app";
 import { buildContainer } from "../../container";
+import { buildOAuthUseCases } from "../../usecases/oauth";
 import { fixedClock } from "./fixed-clock";
 import { fakeTokenVerifier } from "./fake-token-verifier";
 import { InMemoryChecklistRepository } from "./in-memory-checklist-repository";
+import {
+  FakeIdentityProvider,
+  InMemoryAuthCodeStore,
+  InMemoryOAuthClientStore,
+} from "./in-memory-oauth-stores";
 
 export function createTestApp() {
   const repo = new InMemoryChecklistRepository();
+  const identity = new FakeIdentityProvider();
+  const clients = new InMemoryOAuthClientStore();
+  const codes = new InMemoryAuthCodeStore();
   const app = createApp({
     mcp: {
       verifier: fakeTokenVerifier,
       useCasesFor: () =>
         buildContainer({ checklistRepository: repo }, { clock: fixedClock() }),
+      oauth: buildOAuthUseCases({
+        clients,
+        codes,
+        identity,
+        clock: { now: () => new Date() },
+      }),
     },
   });
-  return { app, repo };
+  return { app, repo, identity, clients, codes };
 }
 
 let nextId = 1;
