@@ -14,15 +14,24 @@ if (config.missing.length > 0) {
   });
 }
 
+if (config.invalid.length > 0) {
+  logError("config_invalid", {
+    invalid: config.invalid,
+    effect: "/mcp is not mounted; /health serves, /ready returns 503",
+  });
+}
+
+const supabase = config.invalid.length === 0 ? config.supabase : undefined;
+
 const app = createApp({
-  mcp: config.supabase && {
+  mcp: supabase && {
     verifier: createSupabaseJwtVerifier({
-      supabaseUrl: config.supabase.url,
-      legacyJwtSecret: config.supabase.legacyJwtSecret,
+      supabaseUrl: supabase.url,
+      legacyJwtSecret: supabase.legacyJwtSecret,
     }),
-    useCasesFor: supabaseUseCasesFor(config.supabase),
+    useCasesFor: supabaseUseCasesFor(supabase),
     publicBaseUrl: config.publicBaseUrl,
-    oauth: supabaseOAuthUseCases(config.supabase),
+    oauth: supabaseOAuthUseCases(supabase),
   },
 });
 

@@ -11,6 +11,8 @@ export interface Config {
   };
   /** Required variables that are unset; /mcp stays unmounted until they are provided. */
   missing: string[];
+  /** Variables that are set but malformed; /mcp stays unmounted until they are fixed. */
+  invalid: string[];
 }
 
 const REQUIRED = [
@@ -24,13 +26,29 @@ function read(env: Env, key: string): string | undefined {
   return value ? value : undefined;
 }
 
+/** An absolute http(s) origin with no path, query, or fragment, normalized without a trailing slash. */
+function parseBaseUrl(value: string): string | undefined {
+  try {
+    const url = new URL(value);
+    const isHttp = url.protocol === "https:" || url.protocol === "http:";
+    if (!isHttp || url.pathname !== "/" || url.search || url.hash) {
+      return undefined;
+    }
+    return url.origin;
+  } catch {
+    return undefined;
+  }
+}
+
 export function loadConfig(env: Env): Config {
   const missing = REQUIRED.filter((key) => !read(env, key));
   const url = read(env, "SUPABASE_URL");
   const anonKey = read(env, "SUPABASE_ANON_KEY");
   const serviceRoleKey = read(env, "SUPABASE_SERVICE_ROLE_KEY");
   const legacyJwtSecret = read(env, "SUPABASE_JWT_SECRET");
-  const publicBaseUrl = read(env, "PUBLIC_BASE_URL");
+  const rawBaseUrl = read(env, "PUBLIC_BASE_URL");
+  const publicBaseUrl = rawBaseUrl && parseBaseUrl(rawBaseUrl);
+  const invalid = rawBaseUrl && !publicBaseUrl ? ["PUBLIC_BASE_URL"] : [];
 
   return {
     port: Number(read(env, "PORT")) || 3000,
@@ -46,5 +64,6 @@ export function loadConfig(env: Env): Config {
         },
       }),
     missing,
+    invalid,
   };
 }

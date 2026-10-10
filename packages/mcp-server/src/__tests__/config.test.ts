@@ -22,6 +22,7 @@ describe("loadConfig", () => {
         legacyJwtSecret: "legacy",
       },
       missing: [],
+      invalid: [],
     });
   });
 
@@ -45,5 +46,26 @@ describe("loadConfig", () => {
         SUPABASE_SERVICE_ROLE_KEY: "service",
       }).missing,
     ).toEqual(["SUPABASE_URL"]);
+  });
+
+  it("normalizes PUBLIC_BASE_URL to its origin", () => {
+    const config = loadConfig({ PUBLIC_BASE_URL: "https://mcp.example.com/" });
+
+    expect(config.publicBaseUrl).toBe("https://mcp.example.com");
+    expect(config.invalid).toEqual([]);
+  });
+
+  it.each([
+    "mcp.example.com",
+    "/mcp",
+    "ftp://mcp.example.com",
+    "https://mcp.example.com/base",
+    "https://mcp.example.com?x=1",
+    "https://mcp.example.com/#frag",
+  ])("reports an invalid PUBLIC_BASE_URL: %s", (value) => {
+    const config = loadConfig({ PUBLIC_BASE_URL: value });
+
+    expect(config.publicBaseUrl).toBeUndefined();
+    expect(config.invalid).toEqual(["PUBLIC_BASE_URL"]);
   });
 });
