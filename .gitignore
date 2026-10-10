@@ -40,3 +40,6 @@ yarn-error.*
 *.mobileprovision
 *.orig.*
 *.pem
+
+# local env
+.env

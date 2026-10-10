@@ -1,0 +1,7 @@
+.github
+packages/mobile/.expo
+packages/landing/dist
+supabase/.temp
+supabase/.branches
+**/node_modules
+**/dist
