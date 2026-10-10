@@ -1,7 +1,11 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { checklistEntryColumns } from "../database.types";
+import {
+  checklistEntryColumns,
+  oauthClientColumns,
+  oauthCodeColumns,
+} from "../database.types";
 
 const MIGRATIONS = join(
   import.meta.dirname,
@@ -40,6 +44,18 @@ describe("schema drift", () => {
   it("checklist_entries row type matches the migrations", () => {
     expect([...checklistEntryColumns].sort()).toEqual(
       migrationColumns("checklist_entries"),
+    );
+  });
+
+  it("oauth_clients row type matches the migrations", () => {
+    expect([...oauthClientColumns].sort()).toEqual(
+      migrationColumns("oauth_clients"),
+    );
+  });
+
+  it("oauth_codes row type matches the migrations", () => {
+    expect([...oauthCodeColumns].sort()).toEqual(
+      migrationColumns("oauth_codes"),
     );
   });
 });

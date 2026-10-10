@@ -17,7 +17,15 @@ interface ScriptedResult {
 export function createFakeSupabase(result: ScriptedResult = {}) {
   const calls: RecordedCall[] = [];
   const builder: Record<string, unknown> = {};
-  for (const method of ["from", "select", "eq", "upsert", "delete"]) {
+  for (const method of [
+    "from",
+    "select",
+    "eq",
+    "upsert",
+    "insert",
+    "delete",
+    "maybeSingle",
+  ]) {
     builder[method] = (...args: unknown[]) => {
       calls.push({ method, args });
       return builder;
