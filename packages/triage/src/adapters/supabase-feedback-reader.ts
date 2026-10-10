@@ -20,7 +20,7 @@ const RowSchema = z.object({
   created_at: z.string().regex(CURSOR_PATTERN),
 });
 
-/** The CLI wraps rows as {boundary, rows, warning}; only `.rows` go on, as data. */
+/** The CLI prints {boundary, rows, warning} to mark rows untrusted; only `.rows` go on, as data. */
 const OutputSchema = z.object({ rows: z.array(RowSchema) });
 
 /**
