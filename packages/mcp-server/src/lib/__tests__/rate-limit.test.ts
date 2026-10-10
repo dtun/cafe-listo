@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { clientIp, FixedWindowRateLimiter } from "../rate-limit";
+import {
+  clientIp,
+  DEFAULT_MAX_KEYS,
+  FixedWindowRateLimiter,
+} from "../rate-limit";
 
 function manualClock(start = 0) {
   let now = start;
@@ -51,6 +55,74 @@ describe("FixedWindowRateLimiter", () => {
     clock.advance(60_000);
 
     expect(limiter.hit("a").allowed).toBe(true);
+  });
+});
+
+describe("FixedWindowRateLimiter memory", () => {
+  it("sweeps expired windows", () => {
+    const clock = manualClock();
+    const limiter = new FixedWindowRateLimiter(
+      { limit: 1, windowMs: 60_000 },
+      clock,
+    );
+    for (let i = 0; i < 100; i++) limiter.hit(`ip-${i}`);
+    expect(limiter.size).toBe(100);
+
+    clock.advance(60_000);
+    limiter.hit("fresh");
+
+    expect(limiter.size).toBe(1);
+  });
+
+  it("never tracks more than maxKeys, evicting the oldest windows", () => {
+    const clock = manualClock();
+    const limiter = new FixedWindowRateLimiter(
+      { limit: 1, windowMs: 60 * 60_000 },
+      clock,
+      3,
+    );
+    for (const key of ["a", "b", "c", "d", "e"]) {
+      limiter.hit(key);
+      clock.advance(1000);
+    }
+
+    expect(limiter.size).toBe(3);
+    // The newest keys are still limited; the oldest were evicted.
+    expect(limiter.hit("e").allowed).toBe(false);
+    expect(limiter.hit("d").allowed).toBe(false);
+    expect(limiter.hit("a").allowed).toBe(true);
+  });
+
+  it("evicts in window-start order after a window renews", () => {
+    const clock = manualClock();
+    const limiter = new FixedWindowRateLimiter(
+      { limit: 1, windowMs: 10_000 },
+      clock,
+      2,
+    );
+    limiter.hit("a");
+    clock.advance(5_000);
+    limiter.hit("b");
+    clock.advance(5_000);
+    limiter.hit("a"); // renews: a is now the newest window
+    clock.advance(1_000);
+
+    limiter.hit("c"); // at the cap: b is the oldest and is evicted
+
+    expect(limiter.size).toBe(2);
+    expect(limiter.hit("a").allowed).toBe(false);
+    expect(limiter.hit("c").allowed).toBe(false);
+  });
+
+  it("caps at 10k keys by default", () => {
+    const limiter = new FixedWindowRateLimiter(
+      { limit: 1, windowMs: 60 * 60_000 },
+      manualClock(),
+    );
+    for (let i = 0; i < DEFAULT_MAX_KEYS + 500; i++) limiter.hit(`ip-${i}`);
+
+    expect(DEFAULT_MAX_KEYS).toBe(10_000);
+    expect(limiter.size).toBe(DEFAULT_MAX_KEYS);
   });
 });
 

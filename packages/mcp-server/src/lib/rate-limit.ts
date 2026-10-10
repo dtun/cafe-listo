@@ -9,10 +9,18 @@ export type RateLimitDecision =
   | { allowed: true }
   | { allowed: false; retryAfterSeconds: number };
 
+/** Default cap on tracked keys per limiter; beyond it the oldest windows are evicted. */
+export const DEFAULT_MAX_KEYS = 10_000;
+
 /**
  * In-memory fixed-window counter per key. Single-process only: counts reset
  * on restart and are not shared between replicas, which is enough to stop one
  * client from exhausting Supabase Auth's per-IP limits for everyone.
+ *
+ * Memory is bounded: expired windows are swept, and once maxKeys keys are
+ * tracked the oldest windows are evicted to make room. The map is kept in
+ * window-start order (a renewed window is re-inserted), so its first entries
+ * are always the oldest.
  */
 export class FixedWindowRateLimiter {
   private windows = new Map<string, { start: number; count: number }>();
@@ -21,14 +29,22 @@ export class FixedWindowRateLimiter {
   constructor(
     private readonly rule: RateLimit,
     private readonly clock: Clock,
+    private readonly maxKeys: number = DEFAULT_MAX_KEYS,
   ) {}
+
+  /** Number of keys currently tracked. */
+  get size(): number {
+    return this.windows.size;
+  }
 
   hit(key: string): RateLimitDecision {
     const now = this.clock.now().getTime();
-    this.sweep(now);
+    if (now >= this.nextSweep) this.sweep(now);
 
     const current = this.windows.get(key);
     if (!current || now - current.start >= this.rule.windowMs) {
+      this.windows.delete(key);
+      this.makeRoom(now);
       this.windows.set(key, { start: now, count: 1 });
       return { allowed: true };
     }
@@ -44,11 +60,22 @@ export class FixedWindowRateLimiter {
     };
   }
 
-  /** Drops expired windows at most once per window length so memory stays bounded. */
+  /** Before adding a key at the cap: sweep now, then evict the oldest windows if still full. */
+  private makeRoom(now: number): void {
+    if (this.windows.size < this.maxKeys) return;
+    this.sweep(now);
+    for (const key of this.windows.keys()) {
+      if (this.windows.size < this.maxKeys) break;
+      this.windows.delete(key);
+    }
+  }
+
+  /** Drops expired windows; runs at least once per window length. */
   private sweep(now: number): void {
-    if (now < this.nextSweep) return;
     for (const [key, window] of this.windows) {
-      if (now - window.start >= this.rule.windowMs) this.windows.delete(key);
+      // Window-start order: once one window is live, the rest are too.
+      if (now - window.start < this.rule.windowMs) break;
+      this.windows.delete(key);
     }
     this.nextSweep = now + this.rule.windowMs;
   }
