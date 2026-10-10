@@ -6,6 +6,7 @@
 - **Auth:** OAuth 2.1. Clients register themselves dynamically and use PKCE (S256). Users sign in with Supabase Auth, and the access token a client receives is the user's Supabase JWT.
 - **Storage:** Supabase Postgres.
   - `checklist_entries` is protected by RLS. The server forwards the caller's JWT, so Postgres decides which rows they can see.
+  - `feedback` is write-only for users: RLS lets them insert their own rows and nothing else. Read it with the service role or the Supabase dashboard.
   - `oauth_clients` and `oauth_codes` are reachable only with the service role.
 - **Hosting:** Railway, configured by `railway.json` at the repo root.
 
@@ -18,8 +19,9 @@
 | `get_checklist`   | no      | The user's done state plus overall and per-category progress |
 | `set_item_done`   | yes     | Mark one item packed or not packed (idempotent)              |
 | `reset_checklist` | yes     | Clear the user's checklist                                   |
+| `submit_feedback` | yes     | Send a gap, bug, content error, or idea (after user consent) |
 
-Tool definitions live in `packages/shared/src/mcp/tool-registry.ts`. `tools/list` sends each tool's `title` and MCP `annotations`: read-only tools get `readOnlyHint: true`, `set_item_done` is idempotent, and `reset_checklist` is idempotent and destructive.
+Tool definitions live in `packages/shared/src/mcp/tool-registry.ts`. `tools/list` sends each tool's `title` and MCP `annotations`: read-only tools get `readOnlyHint: true`, `set_item_done` is idempotent, `reset_checklist` is idempotent and destructive, and `submit_feedback` is neither. The `initialize` result includes `instructions` telling the assistant when to offer feedback. Each submission logs `feedback_submitted` with its id and kind, never the text.
 
 ## Connect a client
 
