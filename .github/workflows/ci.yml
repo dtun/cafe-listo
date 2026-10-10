@@ -31,3 +31,6 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+      - name: Feedback triage validator tests
+        run: bash ops/feedback-triage/test.sh
