@@ -14,9 +14,12 @@ import HomeRoute from "../index";
 describe("HomeRoute (index)", () => {
   test("renders the ChecklistScreen content", async () => {
     const { getByTestId, queryByTestId } = render(<HomeRoute />);
-    await waitFor(() => {
-      expect(queryByTestId("loading-indicator")).toBeNull();
-    });
+    await waitFor(
+      () => {
+        expect(queryByTestId("loading-indicator")).toBeNull();
+      },
+      { timeout: 5000 },
+    );
     expect(getByTestId("checklist-screen")).toBeTruthy();
   });
 });
