@@ -2,6 +2,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it, vi } from "vitest";
 import { SupabaseIdentityProvider } from "../supabase-identity-provider";
 
+vi.mock("../../../lib/log", () => ({ logInfo: vi.fn(), logError: vi.fn() }));
+
+/** Says nothing about whether the email already has an account. */
+const SIGN_UP_FAILED =
+  "Couldn't create an account with that email and password. If you already have an account, sign in instead.";
+
 const SESSION = {
   access_token: "at",
   refresh_token: "rt",
@@ -67,21 +73,27 @@ describe("SupabaseIdentityProvider", () => {
     });
   });
 
-  it("surfaces sign-up errors", async () => {
-    const signUp = vi.fn().mockResolvedValue({
-      data: { session: null },
-      error: { message: "Password should be at least 6 characters." },
-    });
+  it.each([
+    "User already registered",
+    "Password should be at least 6 characters.",
+  ])(
+    "replaces the sign-up error %j with a generic message",
+    async (supabaseMessage) => {
+      const signUp = vi.fn().mockResolvedValue({
+        data: { session: null, user: null },
+        error: { message: supabaseMessage, code: "x" },
+      });
 
-    const result = await new SupabaseIdentityProvider(
-      fakeAuth({ signUp }),
-    ).signUp("a@example.com", "pw");
+      const result = await new SupabaseIdentityProvider(
+        fakeAuth({ signUp }),
+      ).signUp("a@example.com", "pw");
 
-    expect(result).toEqual({
-      ok: false,
-      message: "Password should be at least 6 characters.",
-    });
-  });
+      expect(result).toEqual({
+        ok: false,
+        message: SIGN_UP_FAILED,
+      });
+    },
+  );
 
   it("refreshes a session", async () => {
     const refreshSession = vi
