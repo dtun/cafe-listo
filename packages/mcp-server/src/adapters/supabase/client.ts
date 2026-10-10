@@ -21,3 +21,32 @@ export function createUserSupabaseClient(config: {
     },
   });
 }
+
+const SERVER_AUTH_OPTIONS = {
+  persistSession: false,
+  autoRefreshToken: false,
+  detectSessionInUrl: false,
+} as const;
+
+/** Anon-key client for Supabase Auth calls (sign-in, sign-up, refresh). */
+export function createAnonSupabaseClient(config: {
+  url: string;
+  anonKey: string;
+}): AppSupabaseClient {
+  return createClient<Database>(config.url, config.anonKey, {
+    auth: SERVER_AUTH_OPTIONS,
+  });
+}
+
+/**
+ * Service-role client. Bypasses RLS — only for the OAuth tables, never for
+ * user data. Built once at the composition root.
+ */
+export function createServiceSupabaseClient(config: {
+  url: string;
+  serviceRoleKey: string;
+}): AppSupabaseClient {
+  return createClient<Database>(config.url, config.serviceRoleKey, {
+    auth: SERVER_AUTH_OPTIONS,
+  });
+}

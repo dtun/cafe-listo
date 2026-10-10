@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { logInfo } from "./lib/log";
+import { logError, logInfo } from "./lib/log";
 import { createMcpRoutes, type McpRouteDeps } from "./routes/mcp";
 import { createOAuthRoutes } from "./routes/oauth";
 import { createWellKnownRoutes } from "./routes/well-known";
@@ -21,6 +21,15 @@ export function createApp(deps: AppDeps = {}): Hono {
       status: c.res.status,
       ms: Date.now() - start,
     });
+  });
+
+  app.onError((error, c) => {
+    logError("unhandled_error", {
+      method: c.req.method,
+      path: c.req.path,
+      error: error.message,
+    });
+    return c.json({ error: "internal_error" }, 500);
   });
 
   // Mounted before anything that needs env or secrets so a misconfigured deploy still passes healthchecks.

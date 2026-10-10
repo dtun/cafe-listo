@@ -2,7 +2,7 @@ import { serve } from "@hono/node-server";
 import { createApp } from "./app";
 import { createSupabaseJwtVerifier } from "./auth/supabase-jwt-verifier";
 import { loadConfig } from "./config";
-import { supabaseUseCasesFor } from "./container";
+import { supabaseOAuthUseCases, supabaseUseCasesFor } from "./container";
 import { logError, logInfo } from "./lib/log";
 
 const config = loadConfig(process.env);
@@ -22,6 +22,7 @@ const app = createApp({
     }),
     useCasesFor: supabaseUseCasesFor(config.supabase),
     publicBaseUrl: config.publicBaseUrl,
+    oauth: supabaseOAuthUseCases(config.supabase),
   },
 });
 

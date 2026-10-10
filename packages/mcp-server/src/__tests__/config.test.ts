@@ -8,6 +8,7 @@ describe("loadConfig", () => {
         PORT: "8080",
         SUPABASE_URL: "https://p.supabase.co/",
         SUPABASE_ANON_KEY: "anon",
+        SUPABASE_SERVICE_ROLE_KEY: "service",
         SUPABASE_JWT_SECRET: "legacy",
         PUBLIC_BASE_URL: "https://mcp.example.com",
       }),
@@ -17,6 +18,7 @@ describe("loadConfig", () => {
       supabase: {
         url: "https://p.supabase.co",
         anonKey: "anon",
+        serviceRoleKey: "service",
         legacyJwtSecret: "legacy",
       },
       missing: [],
@@ -28,12 +30,20 @@ describe("loadConfig", () => {
 
     expect(config.port).toBe(3000);
     expect(config.supabase).toBeUndefined();
-    expect(config.missing).toEqual(["SUPABASE_URL", "SUPABASE_ANON_KEY"]);
+    expect(config.missing).toEqual([
+      "SUPABASE_URL",
+      "SUPABASE_ANON_KEY",
+      "SUPABASE_SERVICE_ROLE_KEY",
+    ]);
   });
 
   it("treats blank values as missing", () => {
     expect(
-      loadConfig({ SUPABASE_URL: " ", SUPABASE_ANON_KEY: "anon" }).missing,
+      loadConfig({
+        SUPABASE_URL: " ",
+        SUPABASE_ANON_KEY: "anon",
+        SUPABASE_SERVICE_ROLE_KEY: "service",
+      }).missing,
     ).toEqual(["SUPABASE_URL"]);
   });
 });

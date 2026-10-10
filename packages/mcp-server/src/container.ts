@@ -3,13 +3,23 @@ import {
   PREP_ITEMS,
   type ChecklistRepository,
 } from "@cafe-listo/shared";
-import { createUserSupabaseClient } from "./adapters/supabase/client";
+import {
+  createAnonSupabaseClient,
+  createServiceSupabaseClient,
+  createUserSupabaseClient,
+} from "./adapters/supabase/client";
+import { SupabaseIdentityProvider } from "./adapters/supabase/supabase-identity-provider";
+import {
+  SupabaseAuthCodeStore,
+  SupabaseOAuthClientStore,
+} from "./adapters/supabase/supabase-oauth-stores";
 import { SupabaseChecklistRepository } from "./adapters/supabase/supabase-checklist-repository";
 import type { RequestAuth } from "./auth/types";
 import { GetChecklist } from "./usecases/get-checklist";
 import { ListCategories } from "./usecases/list-categories";
 import { ListItems } from "./usecases/list-items";
 import { ResetChecklist } from "./usecases/reset-checklist";
+import { buildOAuthUseCases, type OAuthUseCases } from "./usecases/oauth";
 import { SetItemDone } from "./usecases/set-item-done";
 import { systemClock, type Catalog, type Clock } from "./usecases/types";
 
@@ -56,6 +66,10 @@ export interface SupabaseConfig {
   anonKey: string;
 }
 
+export interface SupabaseServerConfig extends SupabaseConfig {
+  serviceRoleKey: string;
+}
+
 /** Per-request use cases backed by Supabase, acting as the caller so RLS applies. */
 export function supabaseUseCasesFor(
   config: SupabaseConfig,
@@ -73,4 +87,18 @@ export function supabaseUseCasesFor(
       },
       overrides,
     );
+}
+
+/** OAuth server state lives in service-role-only tables; sign-in goes through Supabase Auth. */
+export function supabaseOAuthUseCases(
+  config: SupabaseServerConfig,
+  overrides: ContainerOverrides = {},
+): OAuthUseCases {
+  const service = createServiceSupabaseClient(config);
+  return buildOAuthUseCases({
+    clients: new SupabaseOAuthClientStore(service),
+    codes: new SupabaseAuthCodeStore(service),
+    identity: new SupabaseIdentityProvider(createAnonSupabaseClient(config)),
+    clock: overrides.clock ?? systemClock,
+  });
 }

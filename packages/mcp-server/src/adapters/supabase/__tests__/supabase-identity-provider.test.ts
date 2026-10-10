@@ -52,12 +52,10 @@ describe("SupabaseIdentityProvider", () => {
   });
 
   it("asks the user to confirm email when sign-up returns no session", async () => {
-    const signUp = vi
-      .fn()
-      .mockResolvedValue({
-        data: { session: null, user: { id: "u1" } },
-        error: null,
-      });
+    const signUp = vi.fn().mockResolvedValue({
+      data: { session: null, user: { id: "u1" } },
+      error: null,
+    });
 
     const result = await new SupabaseIdentityProvider(
       fakeAuth({ signUp }),
