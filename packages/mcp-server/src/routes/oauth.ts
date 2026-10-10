@@ -95,10 +95,14 @@ async function readForm(c: Context): Promise<Record<string, unknown>> {
   return (await c.req.parseBody()) as Record<string, unknown>;
 }
 
-/** Per-client-IP limits on the endpoints that reach Supabase Auth or write state. */
+/**
+ * Limits on the endpoints that reach Supabase Auth or write state, per client
+ * IP (and per client_id for /token). claude.ai calls /register and /token from
+ * shared egress IPs, so those buckets are shared by all of its users.
+ */
 export const OAUTH_RATE_LIMITS = {
   login: { limit: 10, windowMs: 60_000 },
-  register: { limit: 10, windowMs: 60 * 60_000 },
+  register: { limit: 30, windowMs: 60 * 60_000 },
   token: { limit: 60, windowMs: 60_000 },
 } as const satisfies Record<string, RateLimit>;
 
@@ -127,9 +131,14 @@ export function createOAuthRoutes(
       const incoming = (
         c.env as { incoming?: { socket?: { remoteAddress?: string } } }
       )?.incoming;
-      const decision = limiter.hit(
-        clientIp(c.req.raw, incoming?.socket?.remoteAddress),
-      );
+      let key = clientIp(c.req.raw, incoming?.socket?.remoteAddress);
+      if (route === "token") {
+        // One client refreshing hard must not starve others behind the same IP.
+        // Hono caches the parsed body, so the handler can read it again.
+        const { client_id } = await readForm(c);
+        key += `|${typeof client_id === "string" ? client_id : ""}`;
+      }
+      const decision = limiter.hit(key);
       if (decision.allowed) return next();
       c.header("Retry-After", String(decision.retryAfterSeconds));
       if (route === "login") {

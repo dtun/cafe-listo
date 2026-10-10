@@ -30,11 +30,15 @@ const requests = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ redirect_uris: ["https://claude.ai/cb"] }),
     }),
-  token: (ip: string) =>
+  token: (ip: string, clientId = "client-1") =>
     fromIp(ip, "/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ grant_type: "refresh_token" }),
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: "nope",
+        client_id: clientId,
+      }),
     }),
   login: (ip: string) =>
     fromIp(ip, "/login", {
@@ -59,7 +63,7 @@ describe("OAuth rate limiting", () => {
   it("keeps the limits in one place", () => {
     expect(OAUTH_RATE_LIMITS).toEqual({
       login: { limit: 10, windowMs: 60_000 },
-      register: { limit: 10, windowMs: 3_600_000 },
+      register: { limit: 30, windowMs: 3_600_000 },
       token: { limit: 60, windowMs: 60_000 },
     });
   });
@@ -102,6 +106,18 @@ describe("OAuth rate limiting", () => {
     const res = await app.fetch(requests.login("198.51.100.9"));
 
     expect(res.status).not.toBe(429);
+  });
+
+  it("limits /token per client IP and client_id, so one client can't starve others behind the same IP", async () => {
+    const { app } = createTestApp({ oauthOptions: { clock: manualClock() } });
+    await exhaust(app, "token", "203.0.113.7");
+
+    const same = await app.fetch(requests.token("203.0.113.7", "client-1"));
+    const other = await app.fetch(requests.token("203.0.113.7", "client-2"));
+
+    expect(same.status).toBe(429);
+    expect(other.status).not.toBe(429);
+    expect((await other.json()).error).toBe("invalid_grant");
   });
 
   it("lets the client back in after the window", async () => {
