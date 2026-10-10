@@ -2,6 +2,7 @@ import { toolSchemas, type ToolName } from "@cafe-listo/shared";
 import type { z } from "zod";
 import type { UseCases } from "../container";
 import { checklistDto, itemDto } from "../dto/checklist";
+import { logInfo } from "../lib/log";
 import type { UseCaseErrorCode, UseCaseResult } from "../usecases/types";
 
 export type ToolHandler = (
@@ -79,6 +80,26 @@ export function buildDispatchTable(
       toolSchemas.reset_checklist,
       async (_args, userId) =>
         unwrap(await usecases.resetChecklist.execute({ userId })),
+    ),
+    submit_feedback: defineTool(
+      "submit_feedback",
+      toolSchemas.submit_feedback,
+      async (args, userId) => {
+        const data = unwrap(
+          await usecases.submitFeedback.execute({
+            userId,
+            kind: args.kind,
+            summary: args.summary,
+            details: args.details,
+            toolName: args.tool_name,
+            itemId: args.item_id,
+            userQuote: args.user_quote,
+          }),
+        );
+        // Never log the feedback text; it can contain whatever the user said.
+        logInfo("feedback_submitted", { id: data.id, kind: args.kind });
+        return { id: data.id, received_at: data.receivedAt.toISOString() };
+      },
     ),
   };
 }

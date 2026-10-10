@@ -18,6 +18,32 @@ export const checklistEntryColumns = [
   "updated_at",
 ] as const satisfies readonly (keyof ChecklistEntryRow)[];
 
+export type FeedbackRow = {
+  id: string;
+  user_id: string;
+  kind: string;
+  summary: string;
+  details: string | null;
+  tool_name: string | null;
+  item_id: string | null;
+  user_quote: string | null;
+  client_name: string | null;
+  created_at: string;
+};
+
+export const feedbackColumns = [
+  "id",
+  "user_id",
+  "kind",
+  "summary",
+  "details",
+  "tool_name",
+  "item_id",
+  "user_quote",
+  "client_name",
+  "created_at",
+] as const satisfies readonly (keyof FeedbackRow)[];
+
 export type OAuthClientRow = {
   client_id: string;
   client_name: string;
@@ -60,6 +86,13 @@ export type Database = {
         Insert: Omit<ChecklistEntryRow, "done" | "updated_at"> &
           Partial<Pick<ChecklistEntryRow, "done" | "updated_at">>;
         Update: Partial<ChecklistEntryRow>;
+        Relationships: [];
+      };
+      feedback: {
+        Row: FeedbackRow;
+        Insert: Pick<FeedbackRow, "user_id" | "kind" | "summary"> &
+          Partial<Omit<FeedbackRow, "user_id" | "kind" | "summary">>;
+        Update: Partial<FeedbackRow>;
         Relationships: [];
       };
       oauth_clients: {

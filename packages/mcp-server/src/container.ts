@@ -2,6 +2,7 @@ import {
   CATEGORIES,
   PREP_ITEMS,
   type ChecklistRepository,
+  type FeedbackRepository,
 } from "@cafe-listo/shared";
 import {
   createAnonSupabaseClient,
@@ -14,6 +15,7 @@ import {
   SupabaseOAuthClientStore,
 } from "./adapters/supabase/supabase-oauth-stores";
 import { SupabaseChecklistRepository } from "./adapters/supabase/supabase-checklist-repository";
+import { SupabaseFeedbackRepository } from "./adapters/supabase/supabase-feedback-repository";
 import type { RequestAuth } from "./auth/types";
 import { GetChecklist } from "./usecases/get-checklist";
 import { ListCategories } from "./usecases/list-categories";
@@ -21,7 +23,14 @@ import { ListItems } from "./usecases/list-items";
 import { ResetChecklist } from "./usecases/reset-checklist";
 import { buildOAuthUseCases, type OAuthUseCases } from "./usecases/oauth";
 import { SetItemDone } from "./usecases/set-item-done";
-import { systemClock, type Catalog, type Clock } from "./usecases/types";
+import { SubmitFeedback } from "./usecases/submit-feedback";
+import {
+  randomUuids,
+  systemClock,
+  type Catalog,
+  type Clock,
+  type IdGenerator,
+} from "./usecases/types";
 
 export interface UseCases {
   listCategories: ListCategories;
@@ -29,15 +38,18 @@ export interface UseCases {
   getChecklist: GetChecklist;
   setItemDone: SetItemDone;
   resetChecklist: ResetChecklist;
+  submitFeedback: SubmitFeedback;
 }
 
 export interface ContainerDeps {
   checklistRepository: ChecklistRepository;
+  feedbackRepository: FeedbackRepository;
 }
 
 export interface ContainerOverrides {
   clock?: Clock;
   catalog?: Catalog;
+  ids?: IdGenerator;
 }
 
 /** Composition root: wires adapters into use cases. No DI library. */
@@ -58,6 +70,11 @@ export function buildContainer(
     getChecklist: new GetChecklist(repo, catalog),
     setItemDone: new SetItemDone(repo, catalog, clock),
     resetChecklist: new ResetChecklist(repo),
+    submitFeedback: new SubmitFeedback(
+      deps.feedbackRepository,
+      clock,
+      overrides.ids ?? randomUuids,
+    ),
   });
 }
 
@@ -75,18 +92,19 @@ export function supabaseUseCasesFor(
   config: SupabaseConfig,
   overrides: ContainerOverrides = {},
 ): (auth: RequestAuth) => UseCases {
-  return (auth) =>
-    buildContainer(
+  return (auth) => {
+    const client = createUserSupabaseClient({
+      ...config,
+      accessToken: auth.accessToken,
+    });
+    return buildContainer(
       {
-        checklistRepository: new SupabaseChecklistRepository(
-          createUserSupabaseClient({
-            ...config,
-            accessToken: auth.accessToken,
-          }),
-        ),
+        checklistRepository: new SupabaseChecklistRepository(client),
+        feedbackRepository: new SupabaseFeedbackRepository(client),
       },
       overrides,
     );
+  };
 }
 
 /** OAuth server state lives in service-role-only tables; sign-in goes through Supabase Auth. */

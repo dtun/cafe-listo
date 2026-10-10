@@ -3,7 +3,11 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { buildMcpToolList, isToolName } from "@cafe-listo/shared";
+import {
+  buildMcpToolList,
+  isToolName,
+  mcpServerInstructions,
+} from "@cafe-listo/shared";
 import type { UseCases } from "../container";
 import { logError } from "../lib/log";
 import { buildDispatchTable, ToolError } from "./dispatch";
@@ -22,7 +26,7 @@ function errorResult(message: string) {
 export function createMcpServer(userId: string, usecases: UseCases): Server {
   const server = new Server(
     { name: "cafe-listo", version: "0.1.0" },
-    { capabilities: { tools: {} } },
+    { capabilities: { tools: {} }, instructions: mcpServerInstructions },
   );
   const dispatch = buildDispatchTable(usecases);
 

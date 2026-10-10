@@ -27,6 +27,12 @@ export interface Clock {
 
 export const systemClock: Clock = { now: () => new Date() };
 
+export interface IdGenerator {
+  next(): string;
+}
+
+export const randomUuids: IdGenerator = { next: () => crypto.randomUUID() };
+
 export interface Catalog {
   categories: readonly Category[];
   items: readonly PrepItem[];

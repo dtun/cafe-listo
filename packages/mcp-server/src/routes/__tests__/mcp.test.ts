@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildMcpToolList, PREP_ITEMS } from "@cafe-listo/shared";
+import {
+  buildMcpToolList,
+  mcpServerInstructions,
+  PREP_ITEMS,
+} from "@cafe-listo/shared";
 import { createApp } from "../../app";
 import { callTool, createTestApp, rpc } from "../../__tests__/fakes/test-app";
 
@@ -82,6 +86,8 @@ describe("POST /mcp protocol", () => {
     const body = await res.json();
     expect(body.result.serverInfo.name).toBe("cafe-listo");
     expect(body.result.capabilities.tools).toBeDefined();
+    expect(body.result.instructions).toBe(mcpServerInstructions);
+    expect(body.result.instructions).toContain("submit_feedback");
   });
 
   it("returns 400 for malformed JSON", async () => {
@@ -109,6 +115,16 @@ describe("POST /mcp protocol", () => {
 
     const body = await res.json();
     expect(body.result.tools).toEqual(buildMcpToolList());
+    expect(
+      body.result.tools.find(
+        (t: { name: string }) => t.name === "submit_feedback",
+      )?.annotations,
+    ).toEqual({
+      title: "Send feedback",
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+    });
   });
 });
 
@@ -265,6 +281,55 @@ describe("tools/call", () => {
     ).json();
 
     expect(bob.progress.done).toBe(0);
+  });
+});
+
+describe("submit_feedback", () => {
+  it("persists feedback owned by the verified caller, never by an argument", async () => {
+    const { app, feedback } = createTestApp();
+
+    const result = await callTool(
+      app,
+      "submit_feedback",
+      {
+        kind: "gap",
+        summary: "No pet supplies in the catalog",
+        user_quote: "what about my dog?",
+        user_id: "bob",
+      },
+      "token-for:alice",
+    );
+
+    expect(result.isError).toBe(false);
+    const body = result.json();
+    expect(body).toEqual({
+      id: expect.stringMatching(/^[0-9a-f-]{36}$/),
+      received_at: "2026-01-01T00:00:00.000Z",
+    });
+    expect(feedback.rows).toEqual([
+      expect.objectContaining({
+        id: body.id,
+        userId: "alice",
+        kind: "gap",
+        summary: "No pet supplies in the catalog",
+        userQuote: "what about my dog?",
+      }),
+    ]);
+  });
+
+  it("rejects an unknown kind without storing anything", async () => {
+    const { app, feedback } = createTestApp();
+
+    const result = await callTool(app, "submit_feedback", {
+      kind: "rant",
+      summary: "x",
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.text).toMatch(
+      /^Error: Invalid arguments for submit_feedback: kind:/,
+    );
+    expect(feedback.rows).toEqual([]);
   });
 });
 

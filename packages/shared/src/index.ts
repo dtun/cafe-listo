@@ -8,7 +8,10 @@ export {
 export {
   buildMcpToolList,
   categoryIdSchema,
+  feedbackKindSchema,
   isToolName,
+  mcpServerInstructions,
+  TOOL_NAMES,
   toolMutates,
   toolRegistry,
   toolSchemas,
@@ -21,6 +24,11 @@ export type {
   ToolName,
 } from "./mcp/tool-registry";
 export type { ChecklistEntry, ChecklistRepository } from "./checklist/ports";
+export type {
+  FeedbackKind,
+  FeedbackRepository,
+  NewFeedback,
+} from "./feedback/ports";
 export {
   ConflictError,
   DomainError,
