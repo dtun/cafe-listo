@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { logInfo } from "./lib/log";
 import { createMcpRoutes, type McpRouteDeps } from "./routes/mcp";
+import { createWellKnownRoutes } from "./routes/well-known";
 
 export interface AppDeps {
   /** Omitted when auth/storage config is missing: /mcp stays unmounted, /health still works. */
@@ -27,6 +28,10 @@ export function createApp(deps: AppDeps = {}): Hono {
   );
 
   if (deps.mcp) {
+    app.route(
+      "/.well-known",
+      createWellKnownRoutes({ publicBaseUrl: deps.mcp.publicBaseUrl }),
+    );
     app.route("/mcp", createMcpRoutes(deps.mcp));
   }
 
