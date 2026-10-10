@@ -1,4 +1,4 @@
-import { Hono, type Context } from "hono";
+import { Hono, type Context, type MiddlewareHandler } from "hono";
 import { z } from "zod";
 import type { OAuthUseCases } from "../usecases/oauth";
 import { errorPage, loginPage } from "./oauth-pages";
@@ -92,6 +92,15 @@ async function readForm(c: Context): Promise<Record<string, unknown>> {
 /** OAuth 2.1 authorization server: DCR, authorize + PKCE, login, token. */
 export function createOAuthRoutes(oauth: OAuthUseCases): Hono {
   const app = new Hono();
+
+  // The sign-in page takes a password: never let another site frame it.
+  const noFraming: MiddlewareHandler = async (c, next) => {
+    await next();
+    c.header("Content-Security-Policy", "frame-ancestors 'none'");
+    c.header("X-Frame-Options", "DENY");
+  };
+  app.use("/authorize", noFraming);
+  app.use("/login", noFraming);
 
   app.post("/register", async (c) => {
     const parsed = registerSchema.safeParse(

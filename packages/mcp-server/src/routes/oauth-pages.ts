@@ -22,6 +22,7 @@ const STYLE = `
   button[value=signin] { background: var(--accent); color: #fff; }
   button[value=signup] { background: transparent; color: var(--accent); }
   .error { color: #c0392b; margin: 0 0 12px; }
+  .destination { color: var(--fg); }
 `;
 
 function page(title: string, body: string): string {
@@ -46,6 +47,15 @@ export interface LoginPageParams {
   error?: string;
 }
 
+/** The client name is self-asserted at registration; the redirect host is what the user can trust. */
+function redirectHost(redirectUri: string): string {
+  try {
+    return new URL(redirectUri).host;
+  } catch {
+    return redirectUri;
+  }
+}
+
 export function loginPage(params: LoginPageParams): string {
   const hidden = (
     [
@@ -65,6 +75,7 @@ export function loginPage(params: LoginPageParams): string {
     "Sign in to Cafe Listo",
     `<h1>Connect to Cafe Listo</h1>
 <p><strong>${escapeHtml(params.clientName)}</strong> wants to read and update your Cafe Listo prep box checklist.</p>
+<p class="destination">You'll be sent back to <strong>${escapeHtml(redirectHost(params.redirectUri))}</strong></p>
 ${params.error ? `<p class="error" role="alert">${escapeHtml(params.error)}</p>` : ""}
 <form method="post" action="/login">
 ${hidden}

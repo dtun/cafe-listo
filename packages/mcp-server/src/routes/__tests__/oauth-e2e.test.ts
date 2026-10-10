@@ -256,6 +256,61 @@ describe("OAuth flow", () => {
     expect(html).toContain("&lt;script&gt;");
   });
 
+  it("shows where the user will be sent back to on the consent page", async () => {
+    const phish = await (
+      await register(t.app, {
+        client_name: "Claude",
+        redirect_uris: ["https://evil.example:8443/cb"],
+      })
+    ).json();
+
+    const html = await (
+      await t.app.fetch(
+        new Request(
+          authorizeUrl({
+            client_id: phish.client_id,
+            redirect_uri: "https://evil.example:8443/cb",
+          }),
+        ),
+      )
+    ).text();
+
+    expect(html).toMatch(
+      /You.ll be sent back to <strong>evil\.example:8443<\/strong>/,
+    );
+  });
+
+  it("keeps showing the redirect host when login re-renders the page", async () => {
+    const html = await (
+      await t.app.fetch(
+        form("/login", loginFields(clientId, { password: "wrong" })),
+      )
+    ).text();
+
+    expect(html).toContain("<strong>claude.ai</strong>");
+  });
+
+  it.each<[string, (clientId: string) => Request]>([
+    ["the consent page", (id) => new Request(authorizeUrl({ client_id: id }))],
+    [
+      "an authorize error page",
+      () => new Request(authorizeUrl({ client_id: "nope" })),
+    ],
+    [
+      "a re-rendered login page",
+      (id) => form("/login", loginFields(id, { password: "wrong" })),
+    ],
+    ["a login error page", () => form("/login", { email: "a@example.com" })],
+  ])("forbids framing %s", async (_label, request) => {
+    const res = await t.app.fetch(request(clientId));
+
+    expect(res.headers.get("Content-Type")).toContain("text/html");
+    expect(res.headers.get("Content-Security-Policy")).toBe(
+      "frame-ancestors 'none'",
+    );
+    expect(res.headers.get("X-Frame-Options")).toBe("DENY");
+  });
+
   it("refreshes tokens", async () => {
     const tokens = await (await exchange(await loginForCode())).json();
 
