@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { FeedbackKind } from "../feedback/ports";
 import { CategoryId } from "../types";
 
 /**
@@ -17,6 +18,28 @@ export const categoryIdSchema = z.enum([
   "documents",
   "morale",
 ] as const satisfies readonly CategoryId[]);
+
+export const feedbackKindSchema = z.enum([
+  "gap",
+  "bug",
+  "content_error",
+  "idea",
+  "other",
+] as const satisfies readonly FeedbackKind[]);
+
+/** Every tool name, so submit_feedback can reference tools (a test keeps this in sync with the registry). */
+export const TOOL_NAMES = [
+  "list_categories",
+  "list_items",
+  "get_checklist",
+  "set_item_done",
+  "reset_checklist",
+  "submit_feedback",
+] as const;
+
+/** Sent in the MCP initialize result. Provider-agnostic: standard MCP only. */
+export const mcpServerInstructions =
+  "Cafe Listo helps people build an emergency prep box. Use list_categories and list_items to browse the catalog, and get_checklist, set_item_done, and reset_checklist to track what the user has packed. If the user wants something the catalog lacks, the guidance looks wrong for their situation, a tool fails or can't do what they asked, or they seem frustrated, offer once to send feedback to the Cafe Listo team with submit_feedback. Tell them exactly what you will send and only call it after they say yes.";
 
 export interface ToolDefinition {
   name: string;
@@ -68,6 +91,24 @@ export const toolRegistry = [
       "Clear the user's entire checklist so every item is not packed. Destructive — only call when the user explicitly asks to start over.",
     inputSchema: z.object({}),
   },
+  {
+    name: "submit_feedback",
+    title: "Send feedback",
+    description:
+      "Send feedback to the Cafe Listo team on the user's behalf so it can be fixed or added. Offer it when the user wants something the catalog lacks, the guidance looks wrong for their situation, a tool errors or can't do what was asked, or the user expresses frustration. Before calling, always show the user a short summary of exactly what will be sent and get an explicit yes. Never include secrets, passwords, or personal information the user didn't share for this purpose. Don't offer more than once for the same issue in a conversation. Put the user's own words in user_quote, the tool involved in tool_name, and the catalog item in item_id when relevant.",
+    inputSchema: z.object({
+      kind: feedbackKindSchema,
+      summary: z
+        .string()
+        .trim()
+        .min(1, { message: "summary is required" })
+        .max(500),
+      details: z.string().trim().max(4000).optional(),
+      tool_name: z.enum(TOOL_NAMES).optional(),
+      item_id: z.string().trim().min(1).max(100).optional(),
+      user_quote: z.string().trim().max(1000).optional(),
+    }),
+  },
 ] as const satisfies ReadonlyArray<ToolDefinition>;
 
 type Registry = typeof toolRegistry;
@@ -97,6 +138,7 @@ export const toolMutates: Record<ToolName, boolean> = {
   get_checklist: false,
   set_item_done: true,
   reset_checklist: true,
+  submit_feedback: true,
 };
 
 /** Behavior hints for tools that write (toolMutates). Only meaningful when readOnlyHint is false. */
@@ -105,6 +147,7 @@ export const toolWriteHints: Partial<
 > = {
   set_item_done: { destructiveHint: false, idempotentHint: true },
   reset_checklist: { destructiveHint: true, idempotentHint: true },
+  submit_feedback: { destructiveHint: false, idempotentHint: false },
 };
 
 /** MCP tool annotations (hints for clients, not guarantees). */
