@@ -8,7 +8,7 @@
   - `checklist_entries` is protected by RLS. The server forwards the caller's JWT, so Postgres decides which rows they can see.
   - `feedback` is write-only for users: RLS lets them insert their own rows and nothing else. Read it with the service role or the Supabase dashboard.
   - `oauth_clients` and `oauth_codes` are reachable only with the service role.
-- **Hosting:** Railway, configured by `railway.json` at the repo root.
+- **Hosting:** Railway. Build, start and healthcheck are set on the Railway service itself; `railway.json` is not honored by this project.
 
 ## Tools
 
@@ -91,7 +91,7 @@ curl -s -X POST localhost:3000/mcp \
 
 The service builds from the repo root so the pnpm workspace resolves. tsup inlines `@cafe-listo/shared` into `dist/index.js`, and production runs `node --enable-source-maps`.
 
-Railway reads `railway.json` from the repo root automatically, so no Config-as-Code Path setting is needed. It builds with `pnpm --filter @cafe-listo/mcp-server... build`, starts `node --enable-source-maps packages/mcp-server/dist/index.js`, and uses `/ready` as the deploy healthcheck. Changes under `packages/mcp-server/`, `packages/shared/`, or to the root `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `.npmrc`, `.nvmrc`, or `railway.json` trigger a redeploy. Railpack takes Node from `engines.node` (`22.x`) and pnpm from `packageManager` in the root `package.json`.
+Build, start and healthcheck are set on the Railway service itself; `railway.json` is not honored by this project. The service builds with `pnpm --filter @cafe-listo/mcp-server... build`, starts `node --enable-source-maps packages/mcp-server/dist/index.js`, and uses `/ready` as the deploy healthcheck. Changes under `packages/mcp-server/`, `packages/shared/`, or to the root `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `.npmrc`, `.nvmrc`, or `railway.json` trigger a redeploy. Railpack takes Node from `engines.node` (`22.x`) and pnpm from `packageManager` in the root `package.json`.
 
 1. Create the service from this repo. If an earlier setup set **Settings → Config-as-Code Path** to `packages/mcp-server/railway.json`, clear it.
 2. Set the required variables:
