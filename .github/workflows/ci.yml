@@ -31,3 +31,7 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+      # The launchd launcher runs packages/triage/dist/cli.js, so the bundle must build.
+      - name: Build triage
+        run: pnpm --filter @cafe-listo/triage build
