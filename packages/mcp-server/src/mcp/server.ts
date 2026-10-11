@@ -80,7 +80,8 @@ export function createMcpServer(userId: string, usecases: UseCases): Server {
     }
     const result = renderMcpPrompt(name, args);
     if (!result.ok) throw new McpError(ErrorCode.InvalidParams, result.message);
-    return result.prompt;
+    const { description, messages } = result.prompt;
+    return { description, messages };
   });
 
   server.setRequestHandler(ListResourcesRequestSchema, async () => ({
