@@ -44,6 +44,7 @@ describe("toolRegistry", () => {
       "set_household",
       "set_item_done",
       "submit_feedback",
+      "update_items",
     ]);
   });
 
@@ -63,6 +64,11 @@ describe("toolRegistry", () => {
     expect(toolMutates.submit_feedback).toBe(true);
     expect(toolMutates.get_household).toBe(false);
     expect(toolMutates.set_household).toBe(true);
+    expect(toolMutates.update_items).toBe(true);
+    expect(toolWriteHints.update_items).toEqual({
+      destructiveHint: false,
+      idempotentHint: true,
+    });
   });
 
   it("tells the model to ask for missing household details rather than guess", () => {

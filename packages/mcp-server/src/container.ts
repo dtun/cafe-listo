@@ -1,4 +1,5 @@
 import {
+  CATALOG_ITEMS,
   CATEGORIES,
   PREP_ITEMS,
   type ChecklistRepository,
@@ -28,6 +29,7 @@ import { buildOAuthUseCases, type OAuthUseCases } from "./usecases/oauth";
 import { SetHousehold } from "./usecases/set-household";
 import { SetItemDone } from "./usecases/set-item-done";
 import { SubmitFeedback } from "./usecases/submit-feedback";
+import { UpdateItems } from "./usecases/update-items";
 import {
   randomUuids,
   systemClock,
@@ -45,6 +47,7 @@ export interface UseCases {
   submitFeedback: SubmitFeedback;
   getHousehold: GetHousehold;
   setHousehold: SetHousehold;
+  updateItems: UpdateItems;
 }
 
 export interface ContainerDeps {
@@ -84,6 +87,7 @@ export function buildContainer(
     ),
     getHousehold: new GetHousehold(deps.profileRepository),
     setHousehold: new SetHousehold(deps.profileRepository, clock),
+    updateItems: new UpdateItems(repo, CATALOG_ITEMS, clock),
   });
 }
 

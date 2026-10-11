@@ -55,6 +55,7 @@ describe("supabaseUseCasesFor", () => {
       "setHousehold",
       "setItemDone",
       "submitFeedback",
+      "updateItems",
     ]);
   });
 });

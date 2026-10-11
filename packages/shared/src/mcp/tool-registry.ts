@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ITEM_STATUSES } from "../checklist/ports";
 import type { FeedbackKind } from "../feedback/ports";
 import { householdPatchSchema } from "../household/schema";
 import { CategoryId } from "../types";
@@ -38,11 +39,37 @@ export const TOOL_NAMES = [
   "submit_feedback",
   "get_household",
   "set_household",
+  "update_items",
 ] as const;
 
 /** Sent in the MCP initialize result. Provider-agnostic: standard MCP only. */
 export const mcpServerInstructions =
   "Cafe Listo helps people build an emergency prep box. Use list_categories and list_items to browse the catalog, and get_checklist, set_item_done, and reset_checklist to track what the user has packed. Use get_household to recall where the user lives and who they are preparing for, and set_household to save it; ask the user for missing details rather than guessing. If the user wants something the catalog lacks, the guidance looks wrong for their situation, a tool fails or can't do what they asked, or they seem frustrated, offer once to send feedback to the Cafe Listo team with submit_feedback. Tell them exactly what you will send and only call it after they say yes.";
+
+export const itemStatusSchema = z.enum(ITEM_STATUSES);
+
+/** One item's change in update_items: item_id plus at least one field. */
+export const itemUpdateSchema = z
+  .object({
+    item_id: z
+      .string()
+      .trim()
+      .min(1, { message: "item_id is required" })
+      .max(100),
+    status: itemStatusSchema.optional(),
+    quantity: z.number().int().min(0).max(10_000).optional(),
+    expires_on: z.iso
+      .date({ message: "expires_on must be a date such as 2027-03-31" })
+      .nullable()
+      .optional(),
+  })
+  .refine(
+    (u) =>
+      u.status !== undefined ||
+      u.quantity !== undefined ||
+      u.expires_on !== undefined,
+    { message: "send at least one of status, quantity or expires_on" },
+  );
 
 export interface ToolDefinition {
   name: string;
@@ -141,6 +168,18 @@ export const toolRegistry = [
         .optional(),
     }),
   },
+  {
+    name: "update_items",
+    title: "Update tote items",
+    description:
+      'Update one or more items in one call: status (needed, bought or packed), quantity (purchase units the user has), or expires_on (the date printed on the label, YYYY-MM-DD, or null to clear it). Omitted fields keep their saved values; moving an item back to needed clears its quantity. Batch related changes: for "I bought everything on the hardware list", send every item on that list with status bought in one call. Idempotent. All or nothing: an unknown or repeated item id rejects the whole batch. Ask the user rather than guessing quantities or dates.',
+    inputSchema: z.object({
+      items: z
+        .array(itemUpdateSchema)
+        .min(1, { message: "send at least one item" })
+        .max(100),
+    }),
+  },
 ] as const satisfies ReadonlyArray<ToolDefinition>;
 
 type Registry = typeof toolRegistry;
@@ -173,6 +212,7 @@ export const toolMutates: Record<ToolName, boolean> = {
   submit_feedback: true,
   get_household: false,
   set_household: true,
+  update_items: true,
 };
 
 /** Behavior hints for tools that write (toolMutates). Only meaningful when readOnlyHint is false. */
@@ -183,6 +223,7 @@ export const toolWriteHints: Partial<
   reset_checklist: { destructiveHint: true, idempotentHint: true },
   submit_feedback: { destructiveHint: false, idempotentHint: false },
   set_household: { destructiveHint: false, idempotentHint: true },
+  update_items: { destructiveHint: false, idempotentHint: true },
 };
 
 /** MCP tool annotations (hints for clients, not guarantees). */
