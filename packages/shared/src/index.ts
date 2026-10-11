@@ -24,6 +24,22 @@ export type {
   ToolDefinition,
   ToolName,
 } from "./mcp/tool-registry";
+export {
+  buildMcpPromptList,
+  isPromptName,
+  PREP_MY_TOTE_PROMPT,
+  PROMPT_NAMES,
+  promptArgSchemas,
+  renderMcpPrompt,
+} from "./mcp/prompts";
+export type {
+  McpPromptArgument,
+  McpPromptListing,
+  McpPromptMessage,
+  PromptName,
+  PromptRenderResult,
+  RenderedPrompt,
+} from "./mcp/prompts";
 export type {
   ChecklistEntry,
   ChecklistRepository,
