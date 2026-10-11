@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { FeedbackKind } from "../feedback/ports";
+import { householdPatchSchema } from "../household/schema";
 import { CategoryId } from "../types";
 
 /**
@@ -35,11 +36,13 @@ export const TOOL_NAMES = [
   "set_item_done",
   "reset_checklist",
   "submit_feedback",
+  "get_household",
+  "set_household",
 ] as const;
 
 /** Sent in the MCP initialize result. Provider-agnostic: standard MCP only. */
 export const mcpServerInstructions =
-  "Cafe Listo helps people build an emergency prep box. Use list_categories and list_items to browse the catalog, and get_checklist, set_item_done, and reset_checklist to track what the user has packed. If the user wants something the catalog lacks, the guidance looks wrong for their situation, a tool fails or can't do what they asked, or they seem frustrated, offer once to send feedback to the Cafe Listo team with submit_feedback. Tell them exactly what you will send and only call it after they say yes.";
+  "Cafe Listo helps people build an emergency prep box. Use list_categories and list_items to browse the catalog, and get_checklist, set_item_done, and reset_checklist to track what the user has packed. Use get_household to recall where the user lives and who they are preparing for, and set_household to save it; ask the user for missing details rather than guessing. If the user wants something the catalog lacks, the guidance looks wrong for their situation, a tool fails or can't do what they asked, or they seem frustrated, offer once to send feedback to the Cafe Listo team with submit_feedback. Tell them exactly what you will send and only call it after they say yes.";
 
 export interface ToolDefinition {
   name: string;
@@ -109,6 +112,35 @@ export const toolRegistry = [
       user_quote: z.string().trim().max(1000).optional(),
     }),
   },
+  {
+    name: "get_household",
+    title: "Get household profile",
+    description:
+      "Get the user's saved household profile: location (state, optional ZIP, and the FEMA region derived from them) and who they are preparing for (adults, seniors, children, infants, pets, medical and dietary needs, and how many days to plan for). Returns profile: null if nothing is saved yet; then ask the user about their household and location rather than assuming. Call this before tailoring advice or quantities to the user.",
+    inputSchema: z.object({}),
+  },
+  {
+    name: "set_household",
+    title: "Save household profile",
+    description:
+      'Save or update the user\'s household profile. Partial update: send only what the user told you; omitted fields keep their saved values. pets and medical merge per key; other fields replace the saved value (children replaces count and bands together). Location: send state (two-letter code such as "AZ") or zip (5-digit US ZIP); the FEMA region is derived. Never send or store a street address. The first save needs a location and at least one person. Ask the user for any missing or unclear details rather than guessing; never invent counts, ages, pets, medical needs, or location. adults are 18–64, seniors 65+, children 1–17 (bands: toddler 1–3, child 4–12, teen 13–17), infants under 1. days is how long to prepare for (default 3, max 14).',
+    inputSchema: householdPatchSchema.extend({
+      state: z
+        .string()
+        .trim()
+        .regex(/^[A-Za-z]{2}$/, {
+          message: "state must be a two-letter code such as AZ",
+        })
+        .optional(),
+      zip: z
+        .string()
+        .trim()
+        .regex(/^\d{5}(?:-?\d{4})?$/, {
+          message: "zip must be a 5-digit US ZIP code",
+        })
+        .optional(),
+    }),
+  },
 ] as const satisfies ReadonlyArray<ToolDefinition>;
 
 type Registry = typeof toolRegistry;
@@ -139,6 +171,8 @@ export const toolMutates: Record<ToolName, boolean> = {
   set_item_done: true,
   reset_checklist: true,
   submit_feedback: true,
+  get_household: false,
+  set_household: true,
 };
 
 /** Behavior hints for tools that write (toolMutates). Only meaningful when readOnlyHint is false. */
@@ -148,6 +182,7 @@ export const toolWriteHints: Partial<
   set_item_done: { destructiveHint: false, idempotentHint: true },
   reset_checklist: { destructiveHint: true, idempotentHint: true },
   submit_feedback: { destructiveHint: false, idempotentHint: false },
+  set_household: { destructiveHint: false, idempotentHint: true },
 };
 
 /** MCP tool annotations (hints for clients, not guarantees). */

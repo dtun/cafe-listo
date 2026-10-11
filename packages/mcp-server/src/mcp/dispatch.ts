@@ -2,6 +2,7 @@ import { toolSchemas, type ToolName } from "@cafe-listo/shared";
 import type { z } from "zod";
 import type { UseCases } from "../container";
 import { checklistDto, itemDto } from "../dto/checklist";
+import { profileDto } from "../dto/household";
 import { logInfo } from "../lib/log";
 import type { UseCaseErrorCode, UseCaseResult } from "../usecases/types";
 
@@ -100,6 +101,27 @@ export function buildDispatchTable(
         logInfo("feedback_submitted", { id: data.id, kind: args.kind });
         return { id: data.id, received_at: data.receivedAt.toISOString() };
       },
+    ),
+    get_household: defineTool(
+      "get_household",
+      toolSchemas.get_household,
+      async (_args, userId) =>
+        profileDto(unwrap(await usecases.getHousehold.execute({ userId }))),
+    ),
+    set_household: defineTool(
+      "set_household",
+      toolSchemas.set_household,
+      async ({ state, zip, ...household }, userId) =>
+        profileDto(
+          unwrap(
+            await usecases.setHousehold.execute({
+              userId,
+              state,
+              zip,
+              household,
+            }),
+          ),
+        ),
     ),
   };
 }
