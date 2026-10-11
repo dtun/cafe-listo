@@ -1,18 +1,20 @@
-import type { FeedbackKind } from "@cafe-listo/shared";
+import type { NewFeedback } from "@cafe-listo/shared";
 
-/** A feedback row as read from storage. `userId` never leaves the reader's caller. */
-export interface FeedbackRecord {
-  id: string;
-  userId: string;
-  kind: FeedbackKind;
-  summary: string;
-  details: string | null;
-  toolName: string | null;
-  itemId: string | null;
-  userQuote: string | null;
-  /** Fixed-width UTC timestamp; also the cursor value. */
+/** Optional fields as storage returns them: present, but possibly null. */
+type Stored<T> = {
+  [K in keyof T]-?: undefined extends T[K]
+    ? Exclude<T[K], undefined> | null
+    : T[K];
+};
+
+/**
+ * A feedback row as read from storage, derived from the shared NewFeedback so
+ * a field added there shows up here. `userId` never leaves the reader's caller.
+ */
+export type FeedbackRecord = Stored<Omit<NewFeedback, "createdAt">> & {
+  /** Fixed-width UTC timestamp; with `id`, the cursor value. */
   createdAt: string;
-}
+};
 
 /** A feedback row the analyzer may see: the user id is replaced by a per-run alias. */
 export type Feedback = Omit<FeedbackRecord, "userId"> & { reporter: string };
