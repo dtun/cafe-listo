@@ -122,6 +122,7 @@ describe("POST /mcp protocol", () => {
     ).toEqual({
       title: "Send feedback",
       readOnlyHint: false,
+      openWorldHint: false,
       destructiveHint: false,
       idempotentHint: false,
     });

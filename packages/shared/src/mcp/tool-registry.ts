@@ -239,6 +239,8 @@ export const toolWriteHints: Partial<
 export interface McpToolAnnotations {
   title: string;
   readOnlyHint: boolean;
+  /** False for every tool: each one reads or writes only Cafe Listo's own data. */
+  openWorldHint: boolean;
   destructiveHint?: boolean;
   idempotentHint?: boolean;
 }
@@ -252,10 +254,13 @@ export interface McpToolListing {
 }
 
 function annotationsFor(name: ToolName, title: string): McpToolAnnotations {
-  if (!toolMutates[name]) return { title, readOnlyHint: true };
+  if (!toolMutates[name]) {
+    return { title, readOnlyHint: true, openWorldHint: false };
+  }
   return {
     title,
     readOnlyHint: false,
+    openWorldHint: false,
     ...toolWriteHints[name],
   };
 }

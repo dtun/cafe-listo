@@ -12,6 +12,7 @@ describe("update_items", () => {
   it("is a non-destructive, idempotent write", async () => {
     expect(await annotationsOf("update_items")).toMatchObject({
       readOnlyHint: false,
+      openWorldHint: false,
       destructiveHint: false,
       idempotentHint: true,
     });
@@ -124,6 +125,7 @@ describe("get_tote", () => {
     expect(await annotationsOf("get_tote")).toEqual({
       title: "Get tote progress",
       readOnlyHint: true,
+      openWorldHint: false,
     });
   });
 

@@ -317,6 +317,7 @@ describe("buildMcpToolList", () => {
       expect(tool?.annotations).toEqual({
         title: tool?.title,
         readOnlyHint: true,
+        openWorldHint: false,
       });
     }
   });
@@ -327,6 +328,7 @@ describe("buildMcpToolList", () => {
     expect(tool?.annotations).toEqual({
       title: "Mark item packed",
       readOnlyHint: false,
+      openWorldHint: false,
       destructiveHint: false,
       idempotentHint: true,
     });
@@ -338,6 +340,7 @@ describe("buildMcpToolList", () => {
     expect(tool?.annotations).toEqual({
       title: "Reset checklist",
       readOnlyHint: false,
+      openWorldHint: false,
       destructiveHint: true,
       idempotentHint: true,
     });
@@ -349,6 +352,7 @@ describe("buildMcpToolList", () => {
     expect(tool?.annotations).toEqual({
       title: "Send feedback",
       readOnlyHint: false,
+      openWorldHint: false,
       destructiveHint: false,
       idempotentHint: false,
     });
@@ -361,6 +365,7 @@ describe("buildMcpToolList", () => {
     expect(tool?.annotations).toEqual({
       title: "Get household profile",
       readOnlyHint: true,
+      openWorldHint: false,
     });
   });
 
@@ -370,6 +375,7 @@ describe("buildMcpToolList", () => {
     expect(tool?.annotations).toEqual({
       title: "Save household profile",
       readOnlyHint: false,
+      openWorldHint: false,
       destructiveHint: false,
       idempotentHint: true,
     });
@@ -386,6 +392,35 @@ describe("buildMcpToolList", () => {
       "state",
       "zip",
     ]);
+  });
+
+  it("annotates get_tote as read-only", () => {
+    const tool = buildMcpToolList().find((t) => t.name === "get_tote");
+
+    expect(tool?.annotations).toEqual({
+      title: "Get tote progress",
+      readOnlyHint: true,
+      openWorldHint: false,
+    });
+  });
+
+  it("annotates update_items as an idempotent, non-destructive write", () => {
+    const tool = buildMcpToolList().find((t) => t.name === "update_items");
+
+    expect(tool?.annotations).toEqual({
+      title: "Update tote items",
+      readOnlyHint: false,
+      openWorldHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+    });
+    expect(tool?.inputSchema.required).toEqual(["items"]);
+  });
+
+  it("marks every tool closed-world: they touch only Cafe Listo's own data", () => {
+    for (const tool of buildMcpToolList()) {
+      expect(tool.annotations.openWorldHint).toBe(false);
+    }
   });
 
   it("derives readOnlyHint from toolMutates", () => {
