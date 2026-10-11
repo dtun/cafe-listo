@@ -2,8 +2,8 @@
 
 The weekly feedback triage loop. It reads new feedback, asks a model for a triage plan, validates the plan, and files GitHub issues labelled `feedback` and `needs-triage` for humans to promote. It only analyzes and files; it never does the work. Terms are defined in [CONTEXT.md](../../CONTEXT.md).
 
-- `src/plan/` holds everything safety depends on, as pure tested functions: the plan schema, `validatePlan` and the policy, reporter aliasing, the cursor, the provenance marker, the exact command lines, and the parsing of every untrusted input.
-- `src/cli.ts` is one script that runs the loop top to bottom.
+- `src/plan/` holds the rules, pure and tested: the plan schema, `validatePlan` and the policy, reporter aliasing, and cursor validation.
+- `src/cli.ts` is the script: it runs the loop top to bottom and owns all I/O (the supabase, gh and claude command lines, the SQL, output parsing, the prompt, the marker, the state files).
 - `src/prompt.md` holds the analyst instructions, which are bundled into `dist/cli.js`.
 - `launchd/` holds the weekly schedule.
 
