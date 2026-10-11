@@ -1,7 +1,9 @@
 /**
- * TriagePlan module: deep, pure and in-process. Its interface is the plan
- * schema, reporter aliasing, plan validation, the cursor and the provenance
- * marker. The CLI depends on it, never the other way round.
+ * TriagePlan module: deep, pure and in-process. It holds everything the
+ * loop's safety depends on: the plan schema, reporter aliasing, plan
+ * validation, the cursor, the provenance marker, the exact command lines,
+ * and the parsing of every untrusted input. The CLI depends on it, never the
+ * other way round.
  */
 import type { Feedback, FeedbackRecord } from "./types";
 
@@ -17,6 +19,19 @@ export {
   type Cursor,
 } from "./cursor";
 export { MARKER_PATTERN, provenanceFooter, provenanceMarker } from "./marker";
+export { OPEN_ISSUE_LIMIT, commands, type Command } from "./commands";
+export {
+  PendingPlanSchema,
+  buildPrompt,
+  feedbackQuery,
+  findMarked,
+  parseAnalyzerOutput,
+  parseFeedbackRows,
+  parseFiledUrl,
+  parseIssues,
+  type Issue,
+  type PendingPlan,
+} from "./inputs";
 export {
   TriagePlanSchema,
   parsePlan,
