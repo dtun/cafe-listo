@@ -3,6 +3,7 @@ import {
   PREP_ITEMS,
   type ChecklistRepository,
   type FeedbackRepository,
+  type ProfileRepository,
 } from "@cafe-listo/shared";
 import {
   createAnonSupabaseClient,
@@ -16,12 +17,15 @@ import {
 } from "./adapters/supabase/supabase-oauth-stores";
 import { SupabaseChecklistRepository } from "./adapters/supabase/supabase-checklist-repository";
 import { SupabaseFeedbackRepository } from "./adapters/supabase/supabase-feedback-repository";
+import { SupabaseProfileRepository } from "./adapters/supabase/supabase-profile-repository";
 import type { RequestAuth } from "./auth/types";
 import { GetChecklist } from "./usecases/get-checklist";
+import { GetHousehold } from "./usecases/get-household";
 import { ListCategories } from "./usecases/list-categories";
 import { ListItems } from "./usecases/list-items";
 import { ResetChecklist } from "./usecases/reset-checklist";
 import { buildOAuthUseCases, type OAuthUseCases } from "./usecases/oauth";
+import { SetHousehold } from "./usecases/set-household";
 import { SetItemDone } from "./usecases/set-item-done";
 import { SubmitFeedback } from "./usecases/submit-feedback";
 import {
@@ -39,11 +43,14 @@ export interface UseCases {
   setItemDone: SetItemDone;
   resetChecklist: ResetChecklist;
   submitFeedback: SubmitFeedback;
+  getHousehold: GetHousehold;
+  setHousehold: SetHousehold;
 }
 
 export interface ContainerDeps {
   checklistRepository: ChecklistRepository;
   feedbackRepository: FeedbackRepository;
+  profileRepository: ProfileRepository;
 }
 
 export interface ContainerOverrides {
@@ -75,6 +82,8 @@ export function buildContainer(
       clock,
       overrides.ids ?? randomUuids,
     ),
+    getHousehold: new GetHousehold(deps.profileRepository),
+    setHousehold: new SetHousehold(deps.profileRepository, clock),
   });
 }
 
@@ -101,6 +110,7 @@ export function supabaseUseCasesFor(
       {
         checklistRepository: new SupabaseChecklistRepository(client),
         feedbackRepository: new SupabaseFeedbackRepository(client),
+        profileRepository: new SupabaseProfileRepository(client),
       },
       overrides,
     );
