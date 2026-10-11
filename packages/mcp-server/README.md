@@ -8,8 +8,8 @@ Setup, client connection, local development and deployment: [docs/mcp-setup.md](
 
 Hexagonal; dependencies point inward.
 
-- **Ports:** `ChecklistRepository` in `packages/shared/src/checklist/ports.ts`; OAuth client, code and identity ports in `src/usecases/oauth/ports.ts`.
-- **Use cases:** `src/usecases/` (`list-categories`, `list-items`, `get-checklist`, `set-item-done`, `reset-checklist`, `submit-feedback`, `oauth/`). They depend only on ports.
+- **Ports:** `ChecklistRepository` in `packages/shared/src/checklist/ports.ts`, `FeedbackRepository` in `packages/shared/src/feedback/ports.ts`, `ProfileRepository` in `packages/shared/src/profile/ports.ts`; OAuth client, code and identity ports in `src/usecases/oauth/ports.ts`.
+- **Use cases:** `src/usecases/` (`list-categories`, `list-items`, `get-checklist`, `set-item-done`, `reset-checklist`, `submit-feedback`, `get-household`, `set-household`, `get-tote`, `update-items`, `oauth/`). They depend only on ports. Pure tote rules (readiness, expiry, hazard coverage) live in `packages/shared/src/tote/progress.ts`, and status transitions in `packages/shared/src/checklist/update.ts`.
 - **Adapters:** `src/adapters/supabase/` implements the ports. HTTP routes are in `src/routes/`, MCP tool dispatch in `src/mcp/`.
 - **Composition root:** `src/container.ts` wires adapters into use cases, with no DI library. `src/index.ts` reads config and starts the server; `src/app.ts` builds the Hono app.
 
@@ -31,14 +31,18 @@ Hexagonal; dependencies point inward.
 
 Defined in `packages/shared/src/mcp/tool-registry.ts`.
 
-| Tool              | Mutates | Purpose                                                      |
-| ----------------- | ------- | ------------------------------------------------------------ |
-| `list_categories` | no      | Category ids, labels and emoji                               |
-| `list_items`      | no      | Catalog items, optionally filtered by category or essentials |
-| `get_checklist`   | no      | The user's done state plus overall and per-category progress |
-| `set_item_done`   | yes     | Mark one item packed or not packed (idempotent)              |
-| `reset_checklist` | yes     | Clear the user's checklist (destructive)                     |
-| `submit_feedback` | yes     | Send a gap, bug, content error, or idea (after user consent) |
+| Tool              | Mutates | Purpose                                                         |
+| ----------------- | ------- | --------------------------------------------------------------- |
+| `list_categories` | no      | Category ids, labels and emoji                                  |
+| `list_items`      | no      | Catalog items, optionally filtered by category or essentials    |
+| `get_checklist`   | no      | The user's done state plus overall and per-category progress    |
+| `set_item_done`   | yes     | Mark one item packed or not packed (idempotent)                 |
+| `reset_checklist` | yes     | Clear the user's checklist (destructive)                        |
+| `submit_feedback` | yes     | Send a gap, bug, content error, or idea (after user consent)    |
+| `get_household`   | no      | The user's location (state, ZIP, FEMA region) and household     |
+| `set_household`   | yes     | Partially update the household; derives region from state/ZIP   |
+| `get_tote`        | no      | Kit for the saved household with status, readiness, fit, expiry |
+| `update_items`    | yes     | Batch status, quantity and label expiry updates (idempotent)    |
 
 ## Environment
 

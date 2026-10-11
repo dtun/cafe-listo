@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { HouseholdPatch } from "./patch";
 import {
   DEFAULT_HOUSEHOLD_DAYS,
   DIETARY_FLAGS,
@@ -24,6 +25,9 @@ export const medicalFlagSchema = z.enum(MEDICAL_FLAGS);
 export const dietaryFlagSchema = z.enum(DIETARY_FLAGS);
 export const householdFlagSchema = z.enum([...MEDICAL_FLAGS, ...DIETARY_FLAGS]);
 export const petKindSchema = z.enum(PET_KINDS);
+
+const needsSchema = z.array(z.string().trim().min(1).max(200)).max(20);
+const daysSchema = z.number().int().min(1).max(MAX_HOUSEHOLD_DAYS);
 
 const childrenSchema = z
   .object({
@@ -62,17 +66,12 @@ export const householdSchema = z
       .default({ dogs: 0, cats: 0, other: 0 }),
     medical: z
       .object({
-        needs: z.array(z.string().trim().min(1).max(200)).max(20).default([]),
+        needs: needsSchema.default([]),
         flags: z.array(medicalFlagSchema).default([]),
       })
       .default({ needs: [], flags: [] }),
     dietary: z.array(dietaryFlagSchema).default([]),
-    days: z
-      .number()
-      .int()
-      .min(1)
-      .max(MAX_HOUSEHOLD_DAYS)
-      .default(DEFAULT_HOUSEHOLD_DAYS),
+    days: daysSchema.default(DEFAULT_HOUSEHOLD_DAYS),
   })
   .refine((h) => h.adults + h.seniors + h.children.count + h.infants > 0, {
     message: "a household needs at least one person",
@@ -80,6 +79,53 @@ export const householdSchema = z
 
 /** Input accepted by `householdSchema` (fields with defaults are optional). */
 export type HouseholdInput = z.input<typeof householdSchema>;
+
+/**
+ * A partial household update: every field optional and no defaults, so an
+ * omitted field means "keep what is stored" (see `applyHouseholdPatch`).
+ * Validate the merged result with `householdSchema`.
+ */
+export const householdPatchSchema = z.object({
+  adults: count.optional(),
+  seniors: count.optional(),
+  children: childrenSchema.optional(),
+  infants: count.optional(),
+  pets: z
+    .object({
+      dogs: count.optional(),
+      cats: count.optional(),
+      other: count.optional(),
+    })
+    .optional(),
+  medical: z
+    .object({
+      needs: needsSchema.optional(),
+      flags: z.array(medicalFlagSchema).optional(),
+    })
+    .optional(),
+  dietary: z.array(dietaryFlagSchema).optional(),
+  days: daysSchema.optional(),
+}) satisfies z.ZodType<HouseholdPatch>;
+
+export type HouseholdValidation =
+  | { ok: true; household: Household }
+  | { ok: false; message: string };
+
+/**
+ * Validates a household with `householdSchema`, for callers that must not
+ * import zod themselves (e.g. use cases). The message joins every issue as
+ * `path: message`.
+ */
+export function validateHousehold(input: unknown): HouseholdValidation {
+  const parsed = householdSchema.safeParse(input);
+  if (parsed.success) return { ok: true, household: parsed.data };
+  return {
+    ok: false,
+    message: parsed.error.issues
+      .map((i) => (i.path.length ? `${i.path.join(".")}: ` : "") + i.message)
+      .join("; "),
+  };
+}
 
 const ruleAmount = {
   amount: z.number().positive(),

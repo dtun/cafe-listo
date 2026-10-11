@@ -6,6 +6,7 @@ import { fixedClock } from "./fixed-clock";
 import { fakeTokenVerifier } from "./fake-token-verifier";
 import { InMemoryChecklistRepository } from "./in-memory-checklist-repository";
 import { InMemoryFeedbackRepository } from "./in-memory-feedback-repository";
+import { InMemoryProfileRepository } from "./in-memory-profile-repository";
 import {
   FakeIdentityProvider,
   InMemoryAuthCodeStore,
@@ -17,6 +18,7 @@ export function createTestApp(
 ) {
   const repo = new InMemoryChecklistRepository();
   const feedback = new InMemoryFeedbackRepository();
+  const profiles = new InMemoryProfileRepository();
   const identity = new FakeIdentityProvider();
   const clients = new InMemoryOAuthClientStore();
   const codes = new InMemoryAuthCodeStore();
@@ -25,7 +27,11 @@ export function createTestApp(
       verifier: fakeTokenVerifier,
       useCasesFor: () =>
         buildContainer(
-          { checklistRepository: repo, feedbackRepository: feedback },
+          {
+            checklistRepository: repo,
+            feedbackRepository: feedback,
+            profileRepository: profiles,
+          },
           { clock: fixedClock() },
         ),
       oauth: buildOAuthUseCases({
@@ -37,7 +43,7 @@ export function createTestApp(
       oauthOptions: options.oauthOptions,
     },
   });
-  return { app, repo, feedback, identity, clients, codes };
+  return { app, repo, feedback, profiles, identity, clients, codes };
 }
 
 let nextId = 1;

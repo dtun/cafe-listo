@@ -122,6 +122,7 @@ describe("POST /mcp protocol", () => {
     ).toEqual({
       title: "Send feedback",
       readOnlyHint: false,
+      openWorldHint: false,
       destructiveHint: false,
       idempotentHint: false,
     });
@@ -330,6 +331,107 @@ describe("submit_feedback", () => {
       /^Error: Invalid arguments for submit_feedback: kind:/,
     );
     expect(feedback.rows).toEqual([]);
+  });
+});
+
+describe("household tools", () => {
+  it("get_household returns null before anything is saved", async () => {
+    const { app } = createTestApp();
+
+    const result = await callTool(app, "get_household");
+
+    expect(result.isError).toBe(false);
+    expect(result.json()).toEqual({ profile: null });
+  });
+
+  it("set_household saves from a ZIP and get_household reads it back", async () => {
+    const { app, profiles } = createTestApp();
+
+    const set = await callTool(app, "set_household", {
+      zip: "85201-1234",
+      adults: 2,
+      pets: { dogs: 1 },
+      medical: { needs: ["insulin (refrigerated)"] },
+    });
+
+    expect(set.isError).toBe(false);
+    const expected = {
+      profile: {
+        state: "AZ",
+        zip: "85201",
+        region: { id: 9, name: expect.any(String) },
+        household: {
+          adults: 2,
+          seniors: 0,
+          children: { count: 0 },
+          infants: 0,
+          pets: { dogs: 1, cats: 0, other: 0 },
+          medical: { needs: ["insulin (refrigerated)"], flags: [] },
+          dietary: [],
+          days: 3,
+        },
+        updated_at: "2026-01-01T00:00:00.000Z",
+      },
+    };
+    expect(set.json()).toEqual(expected);
+    expect((await callTool(app, "get_household")).json()).toEqual(expected);
+    expect(await profiles.get("alice")).toMatchObject({ state: "AZ" });
+  });
+
+  it("set_household applies partial updates", async () => {
+    const { app } = createTestApp();
+    await callTool(app, "set_household", { state: "AZ", adults: 2, days: 7 });
+
+    const result = await callTool(app, "set_household", { infants: 1 });
+
+    expect(result.json().profile.household).toMatchObject({
+      adults: 2,
+      infants: 1,
+      days: 7,
+    });
+  });
+
+  it("validates set_household arguments through the registry", async () => {
+    const { app, profiles } = createTestApp();
+
+    const result = await callTool(app, "set_household", {
+      state: "Arizona",
+      adults: -1,
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.text).toMatch(/^Error: Invalid arguments for set_household:/);
+    expect(result.text).toMatch(/state: state must be a two-letter code/);
+    expect(result.text).toMatch(/adults:/);
+    expect(await profiles.get("alice")).toBeNull();
+  });
+
+  it("reports an unknown state so the model asks the user", async () => {
+    const { app } = createTestApp();
+
+    const result = await callTool(app, "set_household", {
+      state: "ZZ",
+      adults: 1,
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.text).toMatch(/^Error: Unknown state "ZZ"/);
+  });
+
+  it("ignores a user_id argument and isolates users", async () => {
+    const { app, profiles } = createTestApp();
+
+    await callTool(
+      app,
+      "set_household",
+      { state: "AZ", adults: 1, user_id: "bob" },
+      "token-for:alice",
+    );
+
+    expect(await profiles.get("bob")).toBeNull();
+    expect(
+      (await callTool(app, "get_household", {}, "token-for:bob")).json(),
+    ).toEqual({ profile: null });
   });
 });
 

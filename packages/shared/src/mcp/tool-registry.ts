@@ -1,5 +1,7 @@
 import { z } from "zod";
+import { ITEM_STATUSES } from "../checklist/ports";
 import type { FeedbackKind } from "../feedback/ports";
+import { householdPatchSchema } from "../household/schema";
 import { CategoryId } from "../types";
 
 /**
@@ -35,11 +37,40 @@ export const TOOL_NAMES = [
   "set_item_done",
   "reset_checklist",
   "submit_feedback",
+  "get_household",
+  "set_household",
+  "get_tote",
+  "update_items",
 ] as const;
 
 /** Sent in the MCP initialize result. Provider-agnostic: standard MCP only. */
 export const mcpServerInstructions =
-  "Cafe Listo helps people build an emergency prep box. Use list_categories and list_items to browse the catalog, and get_checklist, set_item_done, and reset_checklist to track what the user has packed. If the user wants something the catalog lacks, the guidance looks wrong for their situation, a tool fails or can't do what they asked, or they seem frustrated, offer once to send feedback to the Cafe Listo team with submit_feedback. Tell them exactly what you will send and only call it after they say yes.";
+  "Cafe Listo helps people build an emergency prep box. Use list_categories and list_items to browse the catalog, and get_checklist, set_item_done, and reset_checklist to track what the user has packed. Use get_household to recall where the user lives and who they are preparing for, and set_household to save it; ask the user for missing details rather than guessing. Once a household is saved, use get_tote for the kit sized to it and the user's readiness, and update_items to record what they bought or packed, batching related items into one call. If the user wants something the catalog lacks, the guidance looks wrong for their situation, a tool fails or can't do what they asked, or they seem frustrated, offer once to send feedback to the Cafe Listo team with submit_feedback. Tell them exactly what you will send and only call it after they say yes.";
+
+export const itemStatusSchema = z.enum(ITEM_STATUSES);
+
+/** One item's change in update_items: item_id plus at least one field. */
+export const itemUpdateSchema = z
+  .object({
+    item_id: z
+      .string()
+      .trim()
+      .min(1, { message: "item_id is required" })
+      .max(100),
+    status: itemStatusSchema.optional(),
+    quantity: z.number().int().min(0).max(10_000).optional(),
+    expires_on: z.iso
+      .date({ message: "expires_on must be a date such as 2027-03-31" })
+      .nullable()
+      .optional(),
+  })
+  .refine(
+    (u) =>
+      u.status !== undefined ||
+      u.quantity !== undefined ||
+      u.expires_on !== undefined,
+    { message: "send at least one of status, quantity or expires_on" },
+  );
 
 export interface ToolDefinition {
   name: string;
@@ -109,6 +140,54 @@ export const toolRegistry = [
       user_quote: z.string().trim().max(1000).optional(),
     }),
   },
+  {
+    name: "get_household",
+    title: "Get household profile",
+    description:
+      "Get the user's saved household profile: location (state, optional ZIP, and the FEMA region derived from them) and who they are preparing for (adults, seniors, children, infants, pets, medical and dietary needs, and how many days to plan for). Returns profile: null if nothing is saved yet; then ask the user about their household and location rather than assuming. Call this before tailoring advice or quantities to the user.",
+    inputSchema: z.object({}),
+  },
+  {
+    name: "set_household",
+    title: "Save household profile",
+    description:
+      'Save or update the user\'s household profile. Partial update: send only what the user told you; omitted fields keep their saved values. pets and medical merge per key; other fields replace the saved value (children replaces count and bands together). Location: send state (two-letter code such as "AZ") or zip (5-digit US ZIP); the FEMA region is derived. Never send or store a street address. The first save needs a location and at least one person. Ask the user for any missing or unclear details rather than guessing; never invent counts, ages, pets, medical needs, or location. adults are 18–64, seniors 65+, children 1–17 (bands: toddler 1–3, child 4–12, teen 13–17), infants under 1. days is how long to prepare for (default 3, max 14).',
+    inputSchema: householdPatchSchema.extend({
+      state: z
+        .string()
+        .trim()
+        .regex(/^[A-Za-z]{2}$/, {
+          message: "state must be a two-letter code such as AZ",
+        })
+        .optional(),
+      zip: z
+        .string()
+        .trim()
+        .regex(/^\d{5}(?:-?\d{4})?$/, {
+          message: "zip must be a 5-digit US ZIP code",
+        })
+        .optional(),
+    }),
+  },
+  {
+    name: "get_tote",
+    title: "Get tote progress",
+    description:
+      "Get the user's tote: the kit sized for their saved household and region, each item's status (needed, bought or packed), units needed and quantity they have, and where to buy it (buy_at). Also returns packed/bought/needed counts, readiness_percent (packed share of the kit, essentials counted twice; 100 means everything is fully packed), how full the tote will be once the whole kit is packed and what will not fit, items expiring within 60 days or already expired, and which of the region's hazards the packed kit covers. Requires a saved household; if there is none, call set_household first. Call this before answering what the user still needs, and use its item ids with update_items.",
+    inputSchema: z.object({}),
+  },
+  {
+    name: "update_items",
+    title: "Update tote items",
+    description:
+      'Update one or more items in one call: status (needed, bought or packed), quantity (purchase units the user has), or expires_on (the date printed on the label, YYYY-MM-DD, or null to clear it). Omitted fields keep their saved values; moving an item back to needed clears its quantity. Batch related changes: for "I bought everything on the hardware list", send every item on that list with status bought in one call. Idempotent. All or nothing: an unknown or repeated item id rejects the whole batch. Ask the user rather than guessing quantities or dates.',
+    inputSchema: z.object({
+      items: z
+        .array(itemUpdateSchema)
+        .min(1, { message: "send at least one item" })
+        .max(100),
+    }),
+  },
 ] as const satisfies ReadonlyArray<ToolDefinition>;
 
 type Registry = typeof toolRegistry;
@@ -139,6 +218,10 @@ export const toolMutates: Record<ToolName, boolean> = {
   set_item_done: true,
   reset_checklist: true,
   submit_feedback: true,
+  get_household: false,
+  set_household: true,
+  get_tote: false,
+  update_items: true,
 };
 
 /** Behavior hints for tools that write (toolMutates). Only meaningful when readOnlyHint is false. */
@@ -148,12 +231,16 @@ export const toolWriteHints: Partial<
   set_item_done: { destructiveHint: false, idempotentHint: true },
   reset_checklist: { destructiveHint: true, idempotentHint: true },
   submit_feedback: { destructiveHint: false, idempotentHint: false },
+  set_household: { destructiveHint: false, idempotentHint: true },
+  update_items: { destructiveHint: false, idempotentHint: true },
 };
 
 /** MCP tool annotations (hints for clients, not guarantees). */
 export interface McpToolAnnotations {
   title: string;
   readOnlyHint: boolean;
+  /** False for every tool: each one reads or writes only Cafe Listo's own data. */
+  openWorldHint: boolean;
   destructiveHint?: boolean;
   idempotentHint?: boolean;
 }
@@ -167,10 +254,13 @@ export interface McpToolListing {
 }
 
 function annotationsFor(name: ToolName, title: string): McpToolAnnotations {
-  if (!toolMutates[name]) return { title, readOnlyHint: true };
+  if (!toolMutates[name]) {
+    return { title, readOnlyHint: true, openWorldHint: false };
+  }
   return {
     title,
     readOnlyHint: false,
+    openWorldHint: false,
     ...toolWriteHints[name],
   };
 }

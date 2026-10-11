@@ -7,7 +7,13 @@
 export type ChecklistEntryRow = {
   user_id: string;
   item_id: string;
+  /** Kept equal to `status === "packed"` by a trigger; see the status migration. */
   done: boolean;
+  status: "needed" | "bought" | "packed";
+  quantity: number | null;
+  packed_at: string | null;
+  /** A Postgres `date`: `YYYY-MM-DD`. */
+  expires_on: string | null;
   updated_at: string;
 };
 
@@ -15,6 +21,10 @@ export const checklistEntryColumns = [
   "user_id",
   "item_id",
   "done",
+  "status",
+  "quantity",
+  "packed_at",
+  "expires_on",
   "updated_at",
 ] as const satisfies readonly (keyof ChecklistEntryRow)[];
 
@@ -78,13 +88,40 @@ export const oauthCodeColumns = [
   "expires_at",
 ] as const satisfies readonly (keyof OAuthCodeRow)[];
 
+/** A Postgres `json`/`jsonb` value. */
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
+
+export type HouseholdProfileRow = {
+  user_id: string;
+  region: number;
+  state: string;
+  zip: string | null;
+  household: Json;
+  updated_at: string;
+};
+
+export const householdProfileColumns = [
+  "user_id",
+  "region",
+  "state",
+  "zip",
+  "household",
+  "updated_at",
+] as const satisfies readonly (keyof HouseholdProfileRow)[];
+
 export type Database = {
   public: {
     Tables: {
       checklist_entries: {
         Row: ChecklistEntryRow;
-        Insert: Omit<ChecklistEntryRow, "done" | "updated_at"> &
-          Partial<Pick<ChecklistEntryRow, "done" | "updated_at">>;
+        Insert: Pick<ChecklistEntryRow, "user_id" | "item_id"> &
+          Partial<Omit<ChecklistEntryRow, "user_id" | "item_id">>;
         Update: Partial<ChecklistEntryRow>;
         Relationships: [];
       };
@@ -93,6 +130,13 @@ export type Database = {
         Insert: Pick<FeedbackRow, "user_id" | "kind" | "summary"> &
           Partial<Omit<FeedbackRow, "user_id" | "kind" | "summary">>;
         Update: Partial<FeedbackRow>;
+        Relationships: [];
+      };
+      household_profiles: {
+        Row: HouseholdProfileRow;
+        Insert: Omit<HouseholdProfileRow, "zip" | "updated_at"> &
+          Partial<Pick<HouseholdProfileRow, "zip" | "updated_at">>;
+        Update: Partial<HouseholdProfileRow>;
         Relationships: [];
       };
       oauth_clients: {

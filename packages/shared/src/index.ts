@@ -24,7 +24,14 @@ export type {
   ToolDefinition,
   ToolName,
 } from "./mcp/tool-registry";
-export type { ChecklistEntry, ChecklistRepository } from "./checklist/ports";
+export type {
+  ChecklistEntry,
+  ChecklistRepository,
+  ItemStatus,
+} from "./checklist/ports";
+export { ITEM_STATUSES } from "./checklist/ports";
+export type { ItemUpdate } from "./checklist/update";
+export { applyItemUpdate } from "./checklist/update";
 export type {
   FeedbackKind,
   FeedbackRepository,
@@ -119,3 +126,25 @@ export {
   resolveKit,
   toPackItems,
 } from "./catalog/resolve-kit";
+export type { HouseholdPatch } from "./household/patch";
+export { applyHouseholdPatch, isEmptyHouseholdPatch } from "./household/patch";
+export type { HouseholdProfile, ProfileRepository } from "./profile/ports";
+export type {
+  ExpiringItem,
+  Expiry,
+  HazardCoverage,
+  StatusCounts,
+  ToteLine,
+} from "./tote/progress";
+export {
+  addMonths,
+  ESSENTIAL_WEIGHT,
+  EXPIRY_WINDOW_DAYS,
+  expiringSoon,
+  expiryOf,
+  hazardCoverage,
+  packedFraction,
+  readinessPercent,
+  statusCounts,
+  statusOf,
+} from "./tote/progress";

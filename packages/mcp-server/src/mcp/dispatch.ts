@@ -2,6 +2,8 @@ import { toolSchemas, type ToolName } from "@cafe-listo/shared";
 import type { z } from "zod";
 import type { UseCases } from "../container";
 import { checklistDto, itemDto } from "../dto/checklist";
+import { profileDto } from "../dto/household";
+import { toteDto, updatedItemsDto } from "../dto/tote";
 import { logInfo } from "../lib/log";
 import type { UseCaseErrorCode, UseCaseResult } from "../usecases/types";
 
@@ -100,6 +102,51 @@ export function buildDispatchTable(
         logInfo("feedback_submitted", { id: data.id, kind: args.kind });
         return { id: data.id, received_at: data.receivedAt.toISOString() };
       },
+    ),
+    get_household: defineTool(
+      "get_household",
+      toolSchemas.get_household,
+      async (_args, userId) =>
+        profileDto(unwrap(await usecases.getHousehold.execute({ userId }))),
+    ),
+    set_household: defineTool(
+      "set_household",
+      toolSchemas.set_household,
+      async ({ state, zip, ...household }, userId) =>
+        profileDto(
+          unwrap(
+            await usecases.setHousehold.execute({
+              userId,
+              state,
+              zip,
+              household,
+            }),
+          ),
+        ),
+    ),
+    get_tote: defineTool(
+      "get_tote",
+      toolSchemas.get_tote,
+      async (_args, userId) =>
+        toteDto(unwrap(await usecases.getTote.execute({ userId }))),
+    ),
+    update_items: defineTool(
+      "update_items",
+      toolSchemas.update_items,
+      async (args, userId) =>
+        updatedItemsDto(
+          unwrap(
+            await usecases.updateItems.execute({
+              userId,
+              updates: args.items.map((item) => ({
+                itemId: item.item_id,
+                status: item.status,
+                quantity: item.quantity,
+                expiresOn: item.expires_on,
+              })),
+            }),
+          ),
+        ),
     ),
   };
 }
