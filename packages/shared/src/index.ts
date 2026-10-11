@@ -1,6 +1,7 @@
 export type { Category, CategoryId, ChecklistState, PrepItem } from "./types";
 export {
   CATEGORIES,
+  BASE_PREP_ITEMS,
   PREP_ITEMS,
   getItemsByCategory,
   createInitialChecklistState,
@@ -55,3 +56,10 @@ export type {
   StateCode,
 } from "./data/fema-regions";
 export { regionForZip, stateForZip } from "./data/zip-prefixes";
+export {
+  MESA_AZ_OVERLAY,
+  REGION_NOTE_OVERLAYS,
+  applyRegionNotes,
+  regionNotesFor,
+} from "./data/region-notes";
+export type { RegionNoteOverlay } from "./data/region-notes";
