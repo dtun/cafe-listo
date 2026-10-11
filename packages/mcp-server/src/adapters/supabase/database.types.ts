@@ -7,7 +7,13 @@
 export type ChecklistEntryRow = {
   user_id: string;
   item_id: string;
+  /** Kept equal to `status === "packed"` by a trigger; see the status migration. */
   done: boolean;
+  status: "needed" | "bought" | "packed";
+  quantity: number | null;
+  packed_at: string | null;
+  /** A Postgres `date`: `YYYY-MM-DD`. */
+  expires_on: string | null;
   updated_at: string;
 };
 
@@ -15,6 +21,10 @@ export const checklistEntryColumns = [
   "user_id",
   "item_id",
   "done",
+  "status",
+  "quantity",
+  "packed_at",
+  "expires_on",
   "updated_at",
 ] as const satisfies readonly (keyof ChecklistEntryRow)[];
 
@@ -110,8 +120,8 @@ export type Database = {
     Tables: {
       checklist_entries: {
         Row: ChecklistEntryRow;
-        Insert: Omit<ChecklistEntryRow, "done" | "updated_at"> &
-          Partial<Pick<ChecklistEntryRow, "done" | "updated_at">>;
+        Insert: Pick<ChecklistEntryRow, "user_id" | "item_id"> &
+          Partial<Omit<ChecklistEntryRow, "user_id" | "item_id">>;
         Update: Partial<ChecklistEntryRow>;
         Relationships: [];
       };
