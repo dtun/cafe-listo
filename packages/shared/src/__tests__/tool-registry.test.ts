@@ -1,4 +1,5 @@
 import { CATEGORIES } from "../seed-data";
+import { SOURCES_RESOURCE_URI } from "../mcp/resources";
 import {
   buildMcpToolList,
   categoryIdSchema,
@@ -105,6 +106,13 @@ describe("toolRegistry", () => {
 });
 
 describe("mcpServerInstructions", () => {
+  it("asks for citations by the source titles and URLs the tools return", () => {
+    expect(mcpServerInstructions).toMatch(
+      /cite those sources by the titles and URLs the tool returns/,
+    );
+    expect(mcpServerInstructions).toContain(SOURCES_RESOURCE_URI);
+  });
+
   it("mentions submit_feedback and only real tool names", () => {
     expect(mcpServerInstructions).toContain("submit_feedback");
     const mentioned = mcpServerInstructions.match(/\b[a-z]+(?:_[a-z]+)+\b/g);
