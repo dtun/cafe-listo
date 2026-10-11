@@ -24,7 +24,9 @@ import type {
 import {
   fail,
   ok,
+  randomIds,
   type Clock,
+  type IdGenerator,
   type TriageErrorCode,
   type UseCaseResult,
 } from "./types";
@@ -84,6 +86,8 @@ export interface TriageFeedbackDeps {
   clock: Clock;
   policy: TriagePolicy;
   limits?: TriageLimits;
+  /** Plan ids for provenance markers; random by default. */
+  ids?: IdGenerator;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -110,8 +114,13 @@ async function attempt<T>(what: string, fn: () => Promise<T>): Promise<T> {
   }
 }
 
-function footer(feedbackIds: string[]): string {
-  return `\n\n---\n<sub>Filed by the weekly feedback triage loop from feedback records: ${feedbackIds.join(", ")}</sub>`;
+/** Hidden in the issue or comment body; lets a resumed plan find what it already filed. */
+export function provenanceMarker(planId: string, index: number): string {
+  return `<!-- triage:${planId}:${index} -->`;
+}
+
+function footer(feedbackIds: string[], marker: string): string {
+  return `\n\n---\n<sub>Filed by the weekly feedback triage loop from feedback records: ${feedbackIds.join(", ")}</sub>\n${marker}`;
 }
 
 function outcome(
@@ -154,11 +163,28 @@ export class TriageFeedback {
     this.limits = deps.limits ?? DEFAULT_LIMITS;
   }
 
+  /**
+   * A real run holds the ledger's lock from start to finish, so a manual run
+   * can't overlap the scheduled one. A dry run writes nothing and takes no lock.
+   */
   async execute(
     options: { dryRun?: boolean } = {},
   ): Promise<UseCaseResult<TriageReport>> {
+    const dryRun = options.dryRun ?? false;
+    const { ledger } = this.deps;
     try {
-      return await this.run(options.dryRun ?? false);
+      if (dryRun) return await this.run(true);
+      const acquired = await attempt("taking the run lock", () =>
+        ledger.acquireLock(),
+      );
+      if (!acquired) {
+        return fail("locked", "another triage run holds the lock");
+      }
+      try {
+        return await this.run(false);
+      } finally {
+        await ledger.releaseLock();
+      }
     } catch (error) {
       if (error instanceof Stop) return fail(error.code, error.message);
       throw error;
@@ -244,7 +270,13 @@ export class TriageFeedback {
         action.type === "skip" ? [] : [outcome(action, index, null)],
       );
     } else {
-      const next: PendingPlan = { plan, context, advanceTo, done: [] };
+      const next: PendingPlan = {
+        planId: (this.deps.ids ?? randomIds).next(),
+        plan,
+        context,
+        advanceTo,
+        done: [],
+      };
       await attempt("saving the pending plan", () =>
         ledger.savePendingPlan(next),
       );
@@ -308,18 +340,24 @@ export class TriageFeedback {
     for (const [index, action] of pending.plan.actions.entries()) {
       if (done.has(index)) continue;
       let url: string | null = null;
+      const marker = provenanceMarker(pending.planId, index);
+      const body = (action.body ?? "") + footer(action.feedback_ids, marker);
       try {
+        // A crash between filing and markActionDone leaves the marker on
+        // GitHub; finding it records the action instead of filing it twice.
         if (action.type === "create_issue") {
-          url = await tracker.create({
-            title: action.title ?? "",
-            body: (action.body ?? "") + footer(action.feedback_ids),
-            labels: action.labels ?? [],
-          });
+          url =
+            (await tracker.findMarkedIssue(marker)) ??
+            (await tracker.create({
+              title: action.title ?? "",
+              body,
+              labels: action.labels ?? [],
+            }));
         } else if (action.type === "comment_issue") {
-          url = await tracker.comment(
-            action.issue_number!,
-            (action.body ?? "") + footer(action.feedback_ids),
-          );
+          const n = action.issue_number!;
+          url =
+            (await tracker.findMarkedComment(n, marker)) ??
+            (await tracker.comment(n, body));
         }
       } catch (error) {
         throw new Stop(

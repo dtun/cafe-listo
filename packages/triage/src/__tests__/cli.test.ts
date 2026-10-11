@@ -67,6 +67,30 @@ function fakeWorld(plan: unknown = storagePlan()) {
       }
       case "gh": {
         if (args[0] === "api") return stdout("3\n");
+        if (args[1] === "list" && args.includes("--json=url,body")) {
+          return stdout(
+            JSON.stringify(
+              filed
+                .filter((r) => r.args[1] === "create")
+                .map((r, i) => ({
+                  url: `https://github.com/dtun/cafe-listo/issues/${101 + i}`,
+                  body: r.input,
+                })),
+            ),
+          );
+        }
+        if (args[1] === "view") {
+          return stdout(
+            JSON.stringify({
+              comments: filed
+                .filter((r) => r.args[1] === "comment" && r.args[2] === args[2])
+                .map((r) => ({
+                  url: `https://github.com/dtun/cafe-listo/issues/${args[2]}#issuecomment-1`,
+                  body: r.input,
+                })),
+            }),
+          );
+        }
         if (args[1] === "list") {
           const state = args.includes("--state=open") ? "OPEN" : "CLOSED";
           return stdout(
@@ -237,6 +261,18 @@ describe("triage run (cli.ts with fakes behind the real adapters)", () => {
     expect(world.calls("claude")).toHaveLength(1);
     expect(world.filed.filter((r) => r.args[1] === "create")).toHaveLength(2);
     expect(world.filed.filter((r) => r.args[1] === "comment")).toHaveLength(1);
+  });
+
+  it("refuses to overlap a running triage", async () => {
+    const world = fakeWorld();
+    mkdirSync(stateDir, { recursive: true });
+    writeFileSync(join(stateDir, "lock"), `${process.pid}\n`);
+
+    expect(await main(["run"], io(world))).toBe(1);
+
+    expect(err.join("\n")).toMatch(/locked/);
+    expect(world.calls("supabase")).toHaveLength(0);
+    expect(world.calls("claude")).toHaveLength(0);
   });
 
   it("files nothing and writes no state on --dry-run", async () => {

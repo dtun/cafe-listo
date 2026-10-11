@@ -58,6 +58,21 @@ export class InMemoryIssueTracker implements IssueTracker {
     return url;
   }
 
+  async findMarkedIssue(marker: string): Promise<string | null> {
+    return this.created.find((i) => i.body.includes(marker))?.url ?? null;
+  }
+
+  async findMarkedComment(
+    issueNumber: number,
+    marker: string,
+  ): Promise<string | null> {
+    return (
+      this.comments.find(
+        (c) => c.issueNumber === issueNumber && c.body.includes(marker),
+      )?.url ?? null
+    );
+  }
+
   get writeCount(): number {
     return this.created.length + this.comments.length;
   }

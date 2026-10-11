@@ -6,6 +6,19 @@ const FIELDS = "number,state,title,labels,body,author";
 const BODY_EXCERPT = 400;
 const REPO_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const ISSUE_URL = /^https:\/\/github\.com\/\S+$/;
+const MARKER = /^<!-- triage:[A-Za-z0-9-]{1,64}:\d{1,4} -->$/;
+/** A plan files at most ~10 issues, so its markers sit among the newest. */
+const MARKER_SCAN_LIMIT = 100;
+
+function checkIssueNumber(issueNumber: number): void {
+  if (!Number.isInteger(issueNumber) || issueNumber < 1) {
+    throw new Error(`refusing a bad issue number: ${issueNumber}`);
+  }
+}
+
+function checkMarker(marker: string): void {
+  if (!MARKER.test(marker)) throw new Error("refusing a malformed marker");
+}
 
 const GhIssueSchema = z.object({
   number: z.int(),
@@ -97,9 +110,7 @@ export class GhIssueTracker implements IssueTracker {
   }
 
   async comment(issueNumber: number, body: string): Promise<string> {
-    if (!Number.isInteger(issueNumber) || issueNumber < 1) {
-      throw new Error(`refusing a bad issue number: ${issueNumber}`);
-    }
+    checkIssueNumber(issueNumber);
     const stdout = await this.gh(
       [
         "issue",
@@ -111,6 +122,45 @@ export class GhIssueTracker implements IssueTracker {
       body,
     );
     return this.url(stdout);
+  }
+
+  /** Newest issues labelled `feedback` (every create carries it), any state. */
+  async findMarkedIssue(marker: string): Promise<string | null> {
+    checkMarker(marker);
+    const stdout = await this.gh([
+      "issue",
+      "list",
+      `--repo=${this.repo}`,
+      "--state=all",
+      "--label=feedback",
+      `--limit=${MARKER_SCAN_LIMIT}`,
+      "--json=url,body",
+    ]);
+    const issues = z
+      .array(z.object({ url: z.string(), body: z.string().nullable() }))
+      .parse(JSON.parse(stdout));
+    return issues.find((i) => i.body?.includes(marker))?.url ?? null;
+  }
+
+  async findMarkedComment(
+    issueNumber: number,
+    marker: string,
+  ): Promise<string | null> {
+    checkMarker(marker);
+    checkIssueNumber(issueNumber);
+    const stdout = await this.gh([
+      "issue",
+      "view",
+      String(issueNumber),
+      `--repo=${this.repo}`,
+      "--json=comments",
+    ]);
+    const { comments } = z
+      .object({
+        comments: z.array(z.object({ url: z.string(), body: z.string() })),
+      })
+      .parse(JSON.parse(stdout));
+    return comments.find((c) => c.body.includes(marker))?.url ?? null;
   }
 
   private async list(filters: string[]): Promise<Issue[]> {

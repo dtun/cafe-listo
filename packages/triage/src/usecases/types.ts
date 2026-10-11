@@ -10,7 +10,9 @@ export type TriageErrorCode =
   /** A create or comment failed partway; the next run resumes. */
   | "action_failed"
   /** A port failed before anything was filed. */
-  | "dependency_failed";
+  | "dependency_failed"
+  /** Another run holds the ledger's lock. */
+  | "locked";
 
 export interface TriageError {
   code: TriageErrorCode;
@@ -39,3 +41,9 @@ export interface Clock {
 }
 
 export const systemClock: Clock = { now: () => new Date() };
+
+export interface IdGenerator {
+  next(): string;
+}
+
+export const randomIds: IdGenerator = { next: () => crypto.randomUUID() };

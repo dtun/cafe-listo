@@ -13,7 +13,12 @@ import { fixedClock } from "../../__tests__/fakes/fixed-clock";
 import { InMemoryFeedbackReader } from "../../__tests__/fakes/in-memory-feedback-reader";
 import { InMemoryIssueTracker } from "../../__tests__/fakes/in-memory-issue-tracker";
 import { InMemoryTriageLedger } from "../../__tests__/fakes/in-memory-triage-ledger";
-import { POLICY, TRACKER_ISSUES, world } from "../../__tests__/fakes/world";
+import {
+  POLICY,
+  TRACKER_ISSUES,
+  fourActionPlan as fourActionPlanFixture,
+  world,
+} from "../../__tests__/fakes/world";
 import { DEFAULT_LIMITS, TriageFeedback } from "../triage-feedback";
 
 const BATCH_MAX = { createdAt: "2026-10-03T10:00:00.000000Z", id: "f3" };
@@ -214,6 +219,113 @@ describe("TriageFeedback", () => {
         error: { code: "invalid_pending" },
       });
       expect(w.tracker.writeCount).toBe(0);
+    });
+  });
+
+  describe("crash between filing and recording", () => {
+    it("finds the filed issue by its marker instead of filing it again", async () => {
+      const w = world();
+      w.ledger.failMarkAt = 1; // the first create landed, then the record failed
+
+      const first = await w.triage.execute();
+      expect(first).toMatchObject({
+        ok: false,
+        error: { code: "dependency_failed" },
+      });
+      expect(w.tracker.created).toHaveLength(1);
+      expect(w.ledger.pending?.done).toEqual([]);
+
+      const second = await w.triage.execute();
+
+      expect(second.ok).toBe(true);
+      expect(w.tracker.created.map((i) => i.title)).toEqual([
+        "feat(mcp-server): support custom quantities per household member",
+        "fix(mobile): checked items reset after reconnect",
+      ]);
+      expect(w.analyzer.inputs).toHaveLength(1);
+      if (second.ok) {
+        expect(second.data.resumed?.[0]).toMatchObject({
+          index: 0,
+          url: "https://github.com/dtun/cafe-listo/issues/101",
+        });
+      }
+    });
+
+    it("finds the posted comment by its marker instead of posting it again", async () => {
+      const w = world();
+      w.ledger.failMarkAt = 2; // the comment landed, then the record failed
+
+      await w.triage.execute();
+      expect(w.tracker.comments).toHaveLength(1);
+
+      expect((await w.triage.execute()).ok).toBe(true);
+      expect(w.tracker.comments).toHaveLength(1);
+      expect(w.tracker.created).toHaveLength(2);
+    });
+
+    it("hides a per-action provenance marker in every body", async () => {
+      const w = world();
+      await w.triage.execute();
+
+      expect(w.tracker.created[0].body).toMatch(/\n<!-- triage:plan-1:0 -->$/);
+      expect(w.tracker.comments[0].body).toMatch(/\n<!-- triage:plan-1:1 -->$/);
+      expect(w.tracker.created[1].body).toMatch(/\n<!-- triage:plan-1:3 -->$/);
+    });
+
+    it("saves the plan id with the pending plan", async () => {
+      const w = world();
+      w.tracker.failWriteAt = 1;
+      await w.triage.execute();
+      expect(w.ledger.pending?.planId).toBe("plan-1");
+    });
+  });
+
+  describe("run lock", () => {
+    it("refuses to run while another run holds the lock", async () => {
+      const w = world();
+      w.ledger.heldElsewhere = true;
+
+      const result = await w.triage.execute();
+
+      expect(result).toMatchObject({ ok: false, error: { code: "locked" } });
+      expect(w.reader.calls).toHaveLength(0);
+      expect(w.analyzer.inputs).toHaveLength(0);
+      expect(w.tracker.writeCount).toBe(0);
+    });
+
+    it("releases the lock after success and after failure", async () => {
+      const ok = world();
+      await ok.triage.execute();
+      expect(ok.ledger.locked).toBe(false);
+
+      const failed = world();
+      failed.tracker.failWriteAt = 1;
+      await failed.triage.execute();
+      expect(failed.ledger.locked).toBe(false);
+
+      const thrown = world();
+      thrown.reader.failWith = new Error("boom");
+      await thrown.triage.execute();
+      expect(thrown.ledger.locked).toBe(false);
+    });
+
+    it("holds the lock while it works", async () => {
+      const w = world();
+      let lockedDuringAnalysis = false;
+      w.analyzer.output = (input: never) => {
+        lockedDuringAnalysis = w.ledger.locked;
+        void input;
+        return fourActionPlanFixture();
+      };
+      await w.triage.execute();
+      expect(lockedDuringAnalysis).toBe(true);
+    });
+
+    it("takes no lock on a dry run", async () => {
+      const w = world();
+      w.ledger.heldElsewhere = true;
+      const result = await w.triage.execute({ dryRun: true });
+      expect(result.ok).toBe(true);
     });
   });
 

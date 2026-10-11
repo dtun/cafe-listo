@@ -32,6 +32,16 @@ export interface IssueTracker {
   create(issue: NewIssue): Promise<string>;
   /** Returns the comment's URL. */
   comment(issueNumber: number, body: string): Promise<string>;
+  /**
+   * URL of an issue whose body carries `marker` (a provenance marker the use
+   * case appends), or null. Guards against filing twice after a crash.
+   */
+  findMarkedIssue(marker: string): Promise<string | null>;
+  /** URL of a comment on `issueNumber` whose body carries `marker`, or null. */
+  findMarkedComment(
+    issueNumber: number,
+    marker: string,
+  ): Promise<string | null>;
 }
 
 export interface AnalyzerInput {
@@ -56,6 +66,8 @@ export interface DoneAction {
 
 /** A validated plan saved before anything is filed, so a failed run resumes it. */
 export interface PendingPlan {
+  /** Random per plan; with the action index, it forms each action's provenance marker. */
+  planId: string;
   plan: TriagePlan;
   /** What validatePlan checked the plan against. */
   context: { feedbackIds: string[]; issues: IssueRef[] };
@@ -65,6 +77,13 @@ export interface PendingPlan {
 }
 
 export interface TriageLedger {
+  /**
+   * Takes the exclusive run lock. Returns false if another live run holds it.
+   * A real run holds it from start to finish.
+   */
+  acquireLock(): Promise<boolean>;
+  /** Releases the lock if this process holds it. */
+  releaseLock(): Promise<void>;
   getCursor(): Promise<Cursor | null>;
   getPendingPlan(): Promise<PendingPlan | null>;
   savePendingPlan(pending: PendingPlan): Promise<void>;

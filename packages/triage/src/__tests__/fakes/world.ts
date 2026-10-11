@@ -52,6 +52,7 @@ export function world(plan: unknown = fourActionPlan()): World {
     ledger,
     clock: fixedClock(),
     policy: POLICY,
+    ids: { next: () => "plan-1" },
   });
   return { reader, tracker, analyzer, ledger, triage };
 }

@@ -116,6 +116,76 @@ describe("GhIssueTracker", () => {
     expect(fake.last.input).toBe("New feedback");
   });
 
+  const MARKER = "<!-- triage:plan-1:3 -->";
+
+  it("finds a marked issue among recent feedback issues", async () => {
+    const fake = new FakeExec(() =>
+      stdout(
+        JSON.stringify([
+          { url: "https://github.com/dtun/cafe-listo/issues/7", body: "other" },
+          { url: "https://github.com/dtun/cafe-listo/issues/8", body: null },
+          {
+            url: "https://github.com/dtun/cafe-listo/issues/9",
+            body: `text\n${MARKER}`,
+          },
+        ]),
+      ),
+    );
+    expect(await tracker(fake).findMarkedIssue(MARKER)).toBe(
+      "https://github.com/dtun/cafe-listo/issues/9",
+    );
+    expect(fake.last.args).toEqual([
+      "issue",
+      "list",
+      "--repo=dtun/cafe-listo",
+      "--state=all",
+      "--label=feedback",
+      "--limit=100",
+      "--json=url,body",
+    ]);
+  });
+
+  it("returns null when no issue carries the marker", async () => {
+    const fake = new FakeExec(() => stdout("[]"));
+    expect(await tracker(fake).findMarkedIssue(MARKER)).toBeNull();
+  });
+
+  it("finds a marked comment on an issue", async () => {
+    const url = "https://github.com/dtun/cafe-listo/issues/12#issuecomment-5";
+    const fake = new FakeExec(() =>
+      stdout(
+        JSON.stringify({
+          comments: [
+            { url: "x", body: "unrelated" },
+            { url, body: `New feedback\n${MARKER}` },
+          ],
+        }),
+      ),
+    );
+    expect(await tracker(fake).findMarkedComment(12, MARKER)).toBe(url);
+    expect(fake.last.args).toEqual([
+      "issue",
+      "view",
+      "12",
+      "--repo=dtun/cafe-listo",
+      "--json=comments",
+    ]);
+  });
+
+  it.each(["triage:plan-1:3", "<!-- triage:x y:1 -->", "<!-- other -->"])(
+    "refuses the malformed marker %j without calling gh",
+    async (marker) => {
+      const fake = new FakeExec();
+      await expect(tracker(fake).findMarkedIssue(marker)).rejects.toThrow(
+        /malformed marker/,
+      );
+      await expect(tracker(fake).findMarkedComment(1, marker)).rejects.toThrow(
+        /malformed marker/,
+      );
+      expect(fake.calls).toHaveLength(0);
+    },
+  );
+
   it("refuses a bad issue number without calling gh", async () => {
     const fake = new FakeExec();
     await expect(tracker(fake).comment(0, "x")).rejects.toThrow(
