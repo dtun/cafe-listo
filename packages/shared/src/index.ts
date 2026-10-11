@@ -36,3 +36,21 @@ export {
 } from "./checklist/errors";
 export { SOURCES, getSource } from "./data/sources";
 export type { Source, SourceId, SourcePublisher } from "./data/sources";
+export {
+  FEMA_REGIONS,
+  HAZARD_SOURCES,
+  STATE_CODES,
+  US_DISTRICTS_AND_TERRITORIES,
+  US_STATES,
+  getRegion,
+  isStateCode,
+  regionForState,
+} from "./data/fema-regions";
+export type {
+  FemaRegion,
+  FemaRegionId,
+  Hazard,
+  HazardEntry,
+  HazardRelevance,
+  StateCode,
+} from "./data/fema-regions";
