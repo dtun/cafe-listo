@@ -54,3 +54,4 @@ export type {
   HazardRelevance,
   StateCode,
 } from "./data/fema-regions";
+export { regionForZip, stateForZip } from "./data/zip-prefixes";
