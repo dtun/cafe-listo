@@ -31,18 +31,19 @@ Hexagonal; dependencies point inward.
 
 Defined in `packages/shared/src/mcp/tool-registry.ts`.
 
-| Tool              | Mutates | Purpose                                                         |
-| ----------------- | ------- | --------------------------------------------------------------- |
-| `list_categories` | no      | Category ids, labels and emoji                                  |
-| `list_items`      | no      | Catalog items, optionally filtered by category or essentials    |
-| `get_checklist`   | no      | The user's done state plus overall and per-category progress    |
-| `set_item_done`   | yes     | Mark one item packed or not packed (idempotent)                 |
-| `reset_checklist` | yes     | Clear the user's checklist (destructive)                        |
-| `submit_feedback` | yes     | Send a gap, bug, content error, or idea (after user consent)    |
-| `get_household`   | no      | The user's location (state, ZIP, FEMA region) and household     |
-| `set_household`   | yes     | Partially update the household; derives region from state/ZIP   |
-| `get_tote`        | no      | Kit for the saved household with status, readiness, fit, expiry |
-| `update_items`    | yes     | Batch status, quantity and label expiry updates (idempotent)    |
+| Tool                  | Mutates | Purpose                                                         |
+| --------------------- | ------- | --------------------------------------------------------------- |
+| `list_categories`     | no      | Category ids, labels and emoji                                  |
+| `list_items`          | no      | Catalog items, optionally filtered by category or essentials    |
+| `get_checklist`       | no      | The user's done state plus overall and per-category progress    |
+| `set_item_done`       | yes     | Mark one item packed or not packed (idempotent)                 |
+| `reset_checklist`     | yes     | Clear the user's checklist (destructive)                        |
+| `submit_feedback`     | yes     | Send a gap, bug, content error, or idea (after user consent)    |
+| `get_household`       | no      | The user's location (state, ZIP, FEMA region) and household     |
+| `set_household`       | yes     | Partially update the household; derives region from state/ZIP   |
+| `get_tote`            | no      | Kit for the saved household with status, readiness, fit, expiry |
+| `update_items`        | yes     | Batch status, quantity and label expiry updates (idempotent)    |
+| `build_shopping_list` | no      | What is left to buy, grouped by store, with fit and sources     |
 
 ## Environment
 

@@ -13,20 +13,21 @@
 
 ## Tools
 
-| Tool              | Mutates | Purpose                                                         |
-| ----------------- | ------- | --------------------------------------------------------------- |
-| `list_categories` | no      | Category ids, labels, emoji                                     |
-| `list_items`      | no      | Catalog items, filterable by category or essential only         |
-| `get_checklist`   | no      | The user's done state plus overall and per-category progress    |
-| `set_item_done`   | yes     | Mark one item packed or not packed (idempotent)                 |
-| `reset_checklist` | yes     | Clear the user's checklist                                      |
-| `submit_feedback` | yes     | Send a gap, bug, content error, or idea (after user consent)    |
-| `get_household`   | no      | The user's location (state, ZIP, FEMA region) and household     |
-| `set_household`   | yes     | Partially update the household; derives region from state/ZIP   |
-| `get_tote`        | no      | Kit for the saved household with status, readiness, fit, expiry |
-| `update_items`    | yes     | Batch status, quantity and label expiry updates                 |
+| Tool                  | Mutates | Purpose                                                         |
+| --------------------- | ------- | --------------------------------------------------------------- |
+| `list_categories`     | no      | Category ids, labels, emoji                                     |
+| `list_items`          | no      | Catalog items, filterable by category or essential only         |
+| `get_checklist`       | no      | The user's done state plus overall and per-category progress    |
+| `set_item_done`       | yes     | Mark one item packed or not packed (idempotent)                 |
+| `reset_checklist`     | yes     | Clear the user's checklist                                      |
+| `submit_feedback`     | yes     | Send a gap, bug, content error, or idea (after user consent)    |
+| `get_household`       | no      | The user's location (state, ZIP, FEMA region) and household     |
+| `set_household`       | yes     | Partially update the household; derives region from state/ZIP   |
+| `get_tote`            | no      | Kit for the saved household with status, readiness, fit, expiry |
+| `update_items`        | yes     | Batch status, quantity and label expiry updates                 |
+| `build_shopping_list` | no      | What is left to buy, grouped by store, with fit and sources     |
 
-Tool definitions live in `packages/shared/src/mcp/tool-registry.ts`. `tools/list` sends each tool's `title` and MCP `annotations`: read-only tools (including `get_tote`) get `readOnlyHint: true`, `set_item_done` is idempotent, `reset_checklist` is idempotent and destructive, `set_household` and `update_items` are idempotent and not destructive, and `submit_feedback` is neither. Every tool has `openWorldHint: false`, since each one touches only Cafe Listo's own data. `set_household` takes a state or a ZIP, derives the FEMA region, rejects an unknown or mismatched location with a hint to ask the user, and validates the merged household with the shared zod schema. The `initialize` result includes `instructions` telling the assistant when to offer feedback. Each submission logs `feedback_submitted` with its id and kind, never the text.
+Tool definitions live in `packages/shared/src/mcp/tool-registry.ts`. `tools/list` sends each tool's `title` and MCP `annotations`: read-only tools (including `get_tote` and `build_shopping_list`) get `readOnlyHint: true`, `set_item_done` is idempotent, `reset_checklist` is idempotent and destructive, `set_household` and `update_items` are idempotent and not destructive, and `submit_feedback` is neither. Every tool has `openWorldHint: false`, since each one touches only Cafe Listo's own data. `set_household` takes a state or a ZIP, derives the FEMA region, rejects an unknown or mismatched location with a hint to ask the user, and validates the merged household with the shared zod schema. The `initialize` result includes `instructions` telling the assistant when to offer feedback. Each submission logs `feedback_submitted` with its id and kind, never the text.
 
 ## Tote progress
 
@@ -52,6 +53,35 @@ Bought items score 0, because only the tote counts as ready. The result is round
 **Hazards** has one entry for each of the region's hazards. A hazard with kit items (`via: "items"`) is covered when all of those items are fully packed, and `missing` lists the rest. A hazard with no hazard-specific items (`via: "essentials"`) relies on the base kit, so it is covered when every essential base item is fully packed.
 
 **The `done` column** stays, kept equal to `status = 'packed'` by a trigger, with a check constraint holding that invariant. Migrations only move forward, and dropping a column loses data for good. Migrations are also applied by hand before the deploy, so for a while the old server still writes `done` alone. The trigger turns those writes into a status, so the old and new servers can't disagree. The migration backfills `done = true` rows to `packed`, with `packed_at` set from `updated_at`. A later migration can drop `done` once nothing writes it.
+
+## Shopping list
+
+`build_shopping_list` is read-only. It loads the kit the same way `get_tote` does (the shared `loadTote` helper), so with no profile it returns the same error, asking the assistant to call `set_household` first and then `build_shopping_list` again. The rules are `buildShoppingList` in `packages/shared/src/shopping/shopping-list.ts`.
+
+**Inputs**, all optional:
+
+| Input              | Meaning                                                                                                   |
+| ------------------ | --------------------------------------------------------------------------------------------------------- |
+| `has_tote`         | Whether the user owns the tote. If omitted, it is inferred (see below).                                   |
+| `store_preference` | `online`, `hardware`, `grocery`, `pharmacy` or `pet`. Every line, the tote included, goes in that group.  |
+| `budget_mode`      | Essentials first. See below.                                                                              |
+| `duration_days`    | 1 to 14. Sizes the list for that many days instead of the profile's. Not saved; the profile is unchanged. |
+
+**What is left to buy.** For each kit item, the user has `quantity` purchase units if a quantity is recorded, whatever the status. Without one, a bought or packed item counts as complete (the same reading as readiness) and a needed item counts as none. The line asks for `units − have`, and items with nothing left count toward `counts.done`. Lines show `have` only when it is above 0, and `hazards` (the region hazards that brought the item in) only when there are any.
+
+**Grouping.** Lines are grouped by the item's `buyAt`, or all by `store_preference`. Groups follow `online, hardware, grocery, pharmacy, pet`, except that the tote's group comes first. Within a group, lines keep kit order (category, then catalog). Items with no store (`buyAt` null: copies of documents, cash, a plan) are not lines; they are listed under `gather`.
+
+**The tote.** The tote is not a catalog item, because the kit goes in it, so its shopping fields live in `CONTAINER_PURCHASES` (generic search term, Home Depot source). It is line 1 when the user has no tote. The tool reads that from `has_tote` when the assistant passes it. Otherwise the user is taken to have a tote once any item is `packed`, since packing means putting something in the tote, and not before. The output says which with `has_tote` and `has_tote_inferred`.
+
+**Budget mode.** `budget_mode: true` keeps the lines to essential items (`essential: true`) and the tote. Every other item with something left to buy moves to `later`, listed with its id, name, quantity and sources but no link. `gather` is unchanged. Off by default.
+
+**Search links.** Each line has a generic `search_term` and a `url` built from that term alone: no retailer, affiliate tag, tracking parameter, price or scraping. The patterns live in `STORE_SEARCH_URL_TEMPLATES` in `packages/shared/src/shopping/store-search.ts`, one per store category: `online` uses a shopping search (`https://www.google.com/search?tbm=shop&q=<term>`), and the in-store categories use a map search for nearby stores (`https://www.google.com/maps/search/?api=1&query=<term>`). They are provisional; the retailer decision issue will revisit them.
+
+**Fit** is the same planned fit as `get_tote`: `packTote` over the whole kit at full `units`, at the list's days. `in_tote` lists the ids that go in the tote, and `beside_tote` lists what is stored beside it, with `reason` (`not-packable` or `no-space`) and a plain-words `why`. An item can be in both when only some units fit.
+
+**Sources.** Each line, `gather` and `later` entry, and region hazard cites source ids under `sources`. The top-level `sources` map resolves each cited id once to its title and URL, so the output stays short.
+
+A single adult in Mesa, AZ with nothing bought is 54 lines plus 4 to gather, about 18 KB of JSON.
 
 ## Connect a client
 
