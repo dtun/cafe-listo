@@ -10,14 +10,10 @@ import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { ExecRequest } from "../adapters/exec";
 import { main, type CliIo } from "../cli";
-import { buildContainer, loadConfig } from "../container";
+import { loadConfig } from "../container";
 import { RAW_FEEDBACK } from "../plan/__tests__/fixtures";
 import { FakeExec, stdout } from "./fakes/fake-exec";
-import { FakePlanAnalyzer } from "./fakes/fake-plan-analyzer";
-import { InMemoryFeedbackReader } from "./fakes/in-memory-feedback-reader";
-import { InMemoryIssueTracker } from "./fakes/in-memory-issue-tracker";
-import { InMemoryTriageLedger } from "./fakes/in-memory-triage-ledger";
-import { POLICY, TRACKER_ISSUES, fourActionPlan } from "./fakes/world";
+import { TRACKER_ISSUES, fourActionPlan } from "./fakes/world";
 
 /**
  * A fake process world for the real adapters: supabase returns the #58
@@ -231,25 +227,5 @@ describe("loadConfig", () => {
 
   it("requires REPO_DIR", () => {
     expect(() => loadConfig({})).toThrow(/REPO_DIR/);
-  });
-});
-
-describe("buildContainer", () => {
-  it("wires the use case to the injected ports", async () => {
-    const ledger = new InMemoryTriageLedger();
-    const tracker = new InMemoryIssueTracker(structuredClone(TRACKER_ISSUES));
-    const { triageFeedback } = buildContainer(
-      {
-        reader: new InMemoryFeedbackReader(structuredClone(RAW_FEEDBACK)),
-        tracker,
-        analyzer: new FakePlanAnalyzer(fourActionPlan()),
-        ledger,
-      },
-      { policy: POLICY },
-    );
-
-    expect((await triageFeedback.execute()).ok).toBe(true);
-    expect(tracker.writeCount).toBe(3);
-    expect(ledger.cursor).toBe("2026-10-03T10:00:00.000000Z");
   });
 });

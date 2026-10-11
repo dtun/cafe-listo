@@ -7,13 +7,7 @@ import { FileTriageLedger } from "./adapters/file-triage-ledger";
 import { GhIssueTracker } from "./adapters/gh-issue-tracker";
 import { notifierFor, type Notifier } from "./adapters/notifier";
 import { SupabaseFeedbackReader } from "./adapters/supabase-feedback-reader";
-import { DEFAULT_POLICY, type TriagePolicy } from "./plan";
-import type {
-  FeedbackReader,
-  IssueTracker,
-  PlanAnalyzer,
-  TriageLedger,
-} from "./ports";
+import { DEFAULT_POLICY } from "./plan";
 import instructions from "./prompt.md";
 import { TriageFeedback } from "./usecases/triage-feedback";
 import { systemClock, type Clock } from "./usecases/types";
@@ -57,34 +51,8 @@ export function loadConfig(
   };
 }
 
-export interface ContainerDeps {
-  reader: FeedbackReader;
-  tracker: IssueTracker;
-  analyzer: PlanAnalyzer;
-  ledger: TriageLedger;
-}
-
-export interface ContainerOverrides {
-  clock?: Clock;
-  policy?: TriagePolicy;
-}
-
 export interface UseCases {
   triageFeedback: TriageFeedback;
-}
-
-/** Composition root: wires adapters into the use case. No DI library. */
-export function buildContainer(
-  deps: ContainerDeps,
-  overrides: ContainerOverrides = {},
-): UseCases {
-  return Object.freeze({
-    triageFeedback: new TriageFeedback({
-      ...deps,
-      clock: overrides.clock ?? systemClock,
-      policy: overrides.policy ?? DEFAULT_POLICY,
-    }),
-  });
 }
 
 export interface CliRuntime {
@@ -93,14 +61,18 @@ export interface CliRuntime {
   platform?: string;
 }
 
-/** The production wiring: supabase, gh and claude CLIs plus a file ledger. */
+/**
+ * Composition root: wires the supabase, gh and claude adapters and the file
+ * ledger into the use case. No DI library; tests swap the process seam
+ * (`exec`) and use the use case's own fakes for everything else.
+ */
 export function cliContainer(
   config: TriageConfig,
   runtime: CliRuntime = {},
 ): UseCases & { notifier: Notifier } {
   const exec = runtime.exec ?? nodeExec;
-  const container = buildContainer(
-    {
+  return Object.freeze({
+    triageFeedback: new TriageFeedback({
       reader: new SupabaseFeedbackReader(exec, config.repoDir),
       tracker: new GhIssueTracker(exec, config.githubRepo),
       analyzer: new ClaudePlanAnalyzer(exec, {
@@ -108,14 +80,9 @@ export function cliContainer(
         cwd: config.stateDir,
       }),
       ledger: new FileTriageLedger(config.stateDir),
-    },
-    {
-      clock: runtime.clock,
+      clock: runtime.clock ?? systemClock,
       policy: { ...DEFAULT_POLICY, trustedAuthors: config.trustedAuthors },
-    },
-  );
-  return {
-    ...container,
+    }),
     notifier: notifierFor(runtime.platform ?? process.platform, exec),
-  };
+  });
 }
