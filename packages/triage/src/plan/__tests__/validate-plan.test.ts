@@ -173,13 +173,13 @@ describe("validatePlan", () => {
     [
       "https url",
       () => planWithBodyText("see https://evil.example/login"),
-      "url in:",
+      "link in:",
     ],
-    ["www url", () => planWithBodyText("visit www.evil.example"), "url in:"],
+    ["www url", () => planWithBodyText("visit www.evil.example"), "link in:"],
     [
       "url in title",
       () => planWith(0, { title: "feat(mobile): see http://x.example" }),
-      "url in:",
+      "link in:",
     ],
     [
       "unknown #N",

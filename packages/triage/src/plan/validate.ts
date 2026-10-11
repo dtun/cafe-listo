@@ -38,7 +38,23 @@ const PHONE =
   /(?<![0-9])(?:(?:\+[0-9]{1,3}[\s.-]?)?\(?[0-9]{3}\)?[\s.-]?[0-9]{3}[\s.-]?[0-9]{4}|\+[0-9]{1,3}(?:[\s.-]?[0-9]{2,4}){2,5})(?![0-9])/;
 const MENTION = /(^|[^A-Za-z0-9_.+-])@[A-Za-z0-9-]/;
 const CROSS_REPO = /[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+#[0-9]/;
-const URL = /https?:\/\/|www\./i;
+/**
+ * Anything that renders as a link in a public issue, with or without a
+ * scheme: URLs, scheme-relative `//host`, any markdown link or image, any raw
+ * HTML (anchors, images, comments, autolinks), and bare hosts. Plain `#N`
+ * refs, file names and paths without a host don't match.
+ */
+const LINKS = [
+  /[a-z][a-z0-9+.-]*:\/\//i,
+  /\bwww\./i,
+  /(^|[^A-Za-z0-9:/])\/\/[A-Za-z0-9]/,
+  /\]\s*[([]/,
+  /^\s*\[[^\]]+\]:/m,
+  /<[A-Za-z!/]/,
+  /\b(?:href|src)\s*=/i,
+  /\b[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}\//,
+  /\b[A-Za-z0-9-]+\.(?:com|net|org|io|co|app|dev|xyz|ly|me|info|biz|ru|cn|example|link|site|online|top)\b/i,
+];
 /** Plain #N (not headings, not owner/repo#N, not &#N; entities). */
 const ISSUE_REF = /(?<![A-Za-z0-9_/&#])#([0-9]+)/g;
 
@@ -182,8 +198,8 @@ function textRules(action: TriageAction, ctx: PlanContext): Problem[] {
   if (CROSS_REPO.test(text)) {
     out.push(problem("reference", `cross-repo reference in: ${name}`));
   }
-  if (URL.test(text)) {
-    out.push(problem("url", `url in: ${name}`));
+  if (LINKS.some((re) => re.test(text))) {
+    out.push(problem("link", `link in: ${name}`));
   }
   const known = new Set(ctx.issues.map((issue) => issue.number));
   const unknown = [
