@@ -1,11 +1,9 @@
 import {
   expiringSoon,
-  getRegion,
   hazardCoverage,
   HDX_27_GAL_TOTE,
   packTote,
   readinessPercent,
-  resolveKit,
   statusCounts,
   toPackItems,
   type ChecklistRepository,
@@ -18,7 +16,8 @@ import {
   type StatusCounts,
   type ToteLine,
 } from "@cafe-listo/shared";
-import { fail, ok, type Clock, type UseCaseResult } from "./types";
+import { loadTote, noProfileMessage } from "./load-tote";
+import { ok, type Clock, type UseCaseResult } from "./types";
 
 export interface ToteView {
   region: FemaRegion;
@@ -34,8 +33,7 @@ export interface ToteView {
   hazards: HazardCoverage[];
 }
 
-export const NO_PROFILE_MESSAGE =
-  "No household profile saved yet, so there is no kit to track. Call set_household first with the user's state or ZIP and who is in the household (ask the user rather than guessing), then call get_tote again.";
+export const NO_PROFILE_MESSAGE = noProfileMessage("get_tote");
 
 /**
  * The user's tote: the kit for their saved profile joined with each item's
@@ -55,21 +53,14 @@ export class GetTote {
   ) {}
 
   async execute(input: { userId: string }): Promise<UseCaseResult<ToteView>> {
-    const [profile, entries] = await Promise.all([
-      this.profiles.get(input.userId),
-      this.checklist.getEntries(input.userId),
-    ]);
-    if (!profile) return fail("not_found", NO_PROFILE_MESSAGE);
-
-    const region = getRegion(profile.region);
-    const kit = resolveKit(region, profile.household, {
-      state: profile.state,
-    });
-    const byItem = new Map(entries.map((entry) => [entry.itemId, entry]));
-    const lines: ToteLine[] = kit.map((item) => ({
-      item,
-      entry: byItem.get(item.id),
-    }));
+    const loaded = await loadTote(
+      this.profiles,
+      this.checklist,
+      input.userId,
+      "get_tote",
+    );
+    if (!loaded.ok) return loaded;
+    const { region, lines } = loaded.data;
 
     return ok({
       region,
@@ -77,7 +68,10 @@ export class GetTote {
       counts: statusCounts(lines),
       readinessPercent: readinessPercent(lines),
       container: this.container,
-      pack: packTote(toPackItems(kit), this.container),
+      pack: packTote(
+        toPackItems(lines.map((line) => line.item)),
+        this.container,
+      ),
       expiring: expiringSoon(lines, this.clock.now()),
       hazards: hazardCoverage(region.hazards, lines),
     });
