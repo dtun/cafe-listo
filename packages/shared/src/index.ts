@@ -129,3 +129,22 @@ export {
 export type { HouseholdPatch } from "./household/patch";
 export { applyHouseholdPatch, isEmptyHouseholdPatch } from "./household/patch";
 export type { HouseholdProfile, ProfileRepository } from "./profile/ports";
+export type {
+  ExpiringItem,
+  Expiry,
+  HazardCoverage,
+  StatusCounts,
+  ToteLine,
+} from "./tote/progress";
+export {
+  addMonths,
+  ESSENTIAL_WEIGHT,
+  EXPIRY_WINDOW_DAYS,
+  expiringSoon,
+  expiryOf,
+  hazardCoverage,
+  packedFraction,
+  readinessPercent,
+  statusCounts,
+  statusOf,
+} from "./tote/progress";
