@@ -27,7 +27,7 @@
 | `update_items`        | yes     | Batch status, quantity and label expiry updates                 |
 | `build_shopping_list` | no      | What is left to buy, grouped by store, with fit and sources     |
 
-Tool definitions live in `packages/shared/src/mcp/tool-registry.ts`. `tools/list` sends each tool's `title` and MCP `annotations`: read-only tools (including `get_tote` and `build_shopping_list`) get `readOnlyHint: true`, `set_item_done` is idempotent, `reset_checklist` is idempotent and destructive, `set_household` and `update_items` are idempotent and not destructive, and `submit_feedback` is neither. Every tool has `openWorldHint: false`, since each one touches only Cafe Listo's own data. `set_household` takes a state or a ZIP, derives the FEMA region, rejects an unknown or mismatched location with a hint to ask the user, and validates the merged household with the shared zod schema. The `initialize` result includes `instructions` telling the assistant when to offer feedback. Each submission logs `feedback_submitted` with its id and kind, never the text.
+Tool definitions live in `packages/shared/src/mcp/tool-registry.ts`. `tools/list` sends each tool's `title` and MCP `annotations`: read-only tools (including `get_tote` and `build_shopping_list`) get `readOnlyHint: true`, `set_item_done` is idempotent, `reset_checklist` is idempotent and destructive, `set_household` and `update_items` are idempotent and not destructive, and `submit_feedback` is neither. Every tool has `openWorldHint: false`, since each one touches only Cafe Listo's own data. `set_household` takes a state or a ZIP, derives the FEMA region, rejects an unknown or mismatched location with a hint to ask the user, and validates the merged household with the shared zod schema. The `initialize` result includes `instructions` that briefly describe the tools, ask the assistant to cite the sources `build_shopping_list` returns by title and URL (and only those), and say when to offer feedback. Each submission logs `feedback_submitted` with its id and kind, never the text.
 
 ## Tote progress
 
@@ -82,6 +82,82 @@ Bought items score 0, because only the tote counts as ready. The result is round
 **Sources.** Each line, `gather` and `later` entry, and region hazard cites source ids under `sources`. The top-level `sources` map resolves each cited id once to its title and URL, so the output stays short.
 
 A single adult in Mesa, AZ with nothing bought is 54 lines plus 4 to gather, about 18 KB of JSON.
+
+## Prompt: prep_my_tote
+
+`initialize` declares the `prompts` capability. `prompts/list` returns one prompt, `prep_my_tote`, which clients usually show as a slash command or a menu entry. `prompts/get` returns a single user message that walks the assistant through the flow, one step at a time:
+
+1. **Location.** Call `get_household`, then confirm the user's state or ZIP. It asks for a two-letter state code or a 5-digit ZIP only, and never for a street address.
+2. **Household.** Ask who the user is preparing for (adults, seniors, children and their ages, infants, pets, medical and dietary needs, days). If a household is saved, show it and ask whether it is still right. Ask rather than guess.
+3. **Save** with `set_household`, sending only what the user said or confirmed.
+4. **Shopping list.** Ask about the tote and budget mode, call `build_shopping_list`, and cite the source titles and URLs it returns.
+5. **Track.** Offer to record purchases with `update_items`, one batch per trip.
+
+| Argument   | Required | Meaning                                                                                          |
+| ---------- | -------- | ------------------------------------------------------------------------------------------------ |
+| `location` | no       | A two-letter state code (e.g. `AZ`, any case) or a ZIP. The assistant confirms it before saving. |
+
+A ZIP+4 is cut to its five digits, so the prompt never carries more than `set_household` stores. Anything else (a street address, an unknown state, an unknown argument) fails with JSON-RPC `-32602`, as does an unknown prompt name. The text lives in `packages/shared/src/mcp/prompts.ts`.
+
+## Resource: cafe-listo://sources
+
+`initialize` declares the `resources` capability. `resources/list` returns one resource, `cafe-listo://sources`, and `resources/read` returns it as `application/json`:
+
+```json
+{
+  "sources": [
+    {
+      "id": "ready-water",
+      "title": "Water",
+      "publisher": "Ready.gov (FEMA)",
+      "url": "https://www.ready.gov/water",
+      "accessed": "2026-10-11"
+    }
+  ]
+}
+```
+
+It is JSON rather than Markdown because tools cite sources by id, with the same `id`, `title` and `url` fields as `build_shopping_list`'s `sources` map, so a client or the assistant can match the two without parsing prose. JSON also keeps `accessed: null` (the page could not be retrieved, so it is unverified) and `note` (the caveat) explicit. An unknown URI fails with `-32002` (resource not found) and the URI in `data`. The code is `packages/shared/src/mcp/resources.ts`, and the data is `SOURCES` in `packages/shared/src/data/sources.ts`.
+
+## Example conversation
+
+A user in Mesa, Arizona picks **prep_my_tote** in their MCP client and passes `location: 85201`. Tool calls are shown in brackets.
+
+> **User:** _(prep_my_tote, location 85201)_
+>
+> **Assistant:** [`get_household` → `profile: null`] You don't have a household saved yet. You gave ZIP 85201. Is that right? I only need a state or ZIP, never a street address.
+>
+> **User:** Yes.
+>
+> **Assistant:** Who are you preparing for? How many adults (18-64) and seniors (65+), any children (and their ages) or infants, any pets, any medical or dietary needs? And how many days should the kit cover? The default is 3, and the maximum is 14.
+>
+> **User:** Me and my partner, both in our 30s, and a dog. No special needs. Let's do 3 days.
+>
+> **Assistant:** [`set_household` with `zip: "85201"`, `adults: 2`, `pets: { dogs: 1 }`, `days: 3` → FEMA Region 9] Saved: 2 adults and 1 dog in AZ (FEMA Region 9), planning for 3 days. Do you already own a tote, and do you want essentials first to keep the cost down?
+>
+> **User:** No tote yet. Everything's fine.
+>
+> **Assistant:** [`build_shopping_list` with `has_tote: false`] Here's your list, grouped by store:
+>
+> **Hardware:** the 27 gal tote, then …
+> **Grocery:** water, 1 gallon per person per day for 3 days … ([Water, Ready.gov](https://www.ready.gov/water))
+> **Pet:** dog food for 3 days …
+>
+> To gather at home: copies of documents and some cash. Bulk water is stored beside the tote, since it doesn't fit inside.
+>
+> Want me to track what you buy? Tell me when you've finished a trip and I'll mark it all at once.
+>
+> **User:** I got everything on the grocery list.
+>
+> **Assistant:** [`update_items` with every grocery line as `bought`] Done. Those items are marked bought. Once they're in the tote, tell me and I'll mark them packed.
+
+The list itself is abbreviated here. The real one has every line's quantity and search link.
+
+### Screenshots
+
+<!-- TODO: add screenshots of prep_my_tote in an MCP client (prompt picker, shopping list with citations, update_items confirmation) once the manual check is done. -->
+
+_Screenshots to come._
 
 ## Connect a client
 

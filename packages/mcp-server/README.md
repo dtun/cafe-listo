@@ -45,6 +45,11 @@ Defined in `packages/shared/src/mcp/tool-registry.ts`.
 | `update_items`        | yes     | Batch status, quantity and label expiry updates (idempotent)    |
 | `build_shopping_list` | no      | What is left to buy, grouped by store, with fit and sources     |
 
+## Prompts and resources
+
+- **Prompt `prep_my_tote`** (`packages/shared/src/mcp/prompts.ts`): guides the assistant from location to household to shopping list to tracking. Optional `location` argument: a state code or ZIP.
+- **Resource `cafe-listo://sources`** (`packages/shared/src/mcp/resources.ts`): the source bibliography as JSON.
+
 ## Environment
 
 From `.env.example`. `pnpm dev` loads `packages/mcp-server/.env` if it exists.
