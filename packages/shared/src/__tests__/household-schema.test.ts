@@ -106,6 +106,7 @@ describe("quantityRuleSchema", () => {
     { kind: "per_household", amount: 1 },
     { kind: "per_pet_per_day", amount: 0.5, pets: ["dogs"] },
     { kind: "per_infant", amount: 6 },
+    { kind: "per_infant_per_day", amount: 8, packSize: 30 },
     {
       kind: "conditional",
       flag: "power_dependent",

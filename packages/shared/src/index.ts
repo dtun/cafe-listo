@@ -72,6 +72,7 @@ export type {
   HouseholdFlag,
   MedicalFlag,
   PerHouseholdRule,
+  PerInfantPerDayRule,
   PerInfantRule,
   PerPersonPerDayRule,
   PerPersonRule,

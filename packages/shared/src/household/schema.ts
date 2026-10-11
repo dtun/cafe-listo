@@ -96,6 +96,7 @@ export const baseQuantityRuleSchema = z.discriminatedUnion("kind", [
     pets: z.array(petKindSchema).min(1).optional(),
   }),
   z.object({ kind: z.literal("per_infant"), ...ruleAmount }),
+  z.object({ kind: z.literal("per_infant_per_day"), ...ruleAmount }),
 ]);
 
 /** Validates a catalog item's quantity rule. */

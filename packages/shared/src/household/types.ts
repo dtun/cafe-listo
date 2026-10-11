@@ -81,6 +81,8 @@ export type PerPetPerDayRule = RuleAmount & {
   pets?: PetKind[];
 };
 export type PerInfantRule = RuleAmount & { kind: "per_infant" };
+/** For daily infant consumables such as diapers and formula. */
+export type PerInfantPerDayRule = RuleAmount & { kind: "per_infant_per_day" };
 
 /** A rule that scales a quantity directly from the household. */
 export type BaseQuantityRule =
@@ -88,7 +90,8 @@ export type BaseQuantityRule =
   | PerPersonRule
   | PerHouseholdRule
   | PerPetPerDayRule
-  | PerInfantRule;
+  | PerInfantRule
+  | PerInfantPerDayRule;
 
 /** Applies `rule` only when the household has `flag`; otherwise the quantity is 0. */
 export interface ConditionalRule {

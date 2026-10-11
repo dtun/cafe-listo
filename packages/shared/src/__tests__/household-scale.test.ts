@@ -117,6 +117,25 @@ describe("scale", () => {
     });
   });
 
+  describe("per_infant_per_day", () => {
+    const diapers: QuantityRule = {
+      kind: "per_infant_per_day",
+      amount: 8,
+      packSize: 30,
+    };
+
+    it("is 0 without infants", () => {
+      expect(scale(diapers, singleAdult)).toBe(0);
+    });
+
+    it("multiplies by infants and days, then rounds up to packs", () => {
+      // 1 infant × 8 × 3 days = 24 → 1 pack of 30
+      expect(scale(diapers, familyOfFive)).toBe(1);
+      // 2 infants × 8 × 14 days = 224 → 8 packs of 30
+      expect(scale(diapers, household({ infants: 2, days: 14 }))).toBe(8);
+    });
+  });
+
   describe("conditional", () => {
     const meds: QuantityRule = {
       kind: "conditional",

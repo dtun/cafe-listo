@@ -45,6 +45,8 @@ function baseNeed(rule: BaseQuantityRule, household: Household): number {
       return rule.amount * petCount(household, rule) * household.days;
     case "per_infant":
       return rule.amount * household.infants;
+    case "per_infant_per_day":
+      return rule.amount * household.infants * household.days;
     default: {
       const unknown: never = rule;
       throw new Error(`Unknown quantity rule: ${JSON.stringify(unknown)}`);
