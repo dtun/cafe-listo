@@ -34,3 +34,5 @@ export {
   DomainError,
   RepositoryError,
 } from "./checklist/errors";
+export { SOURCES, getSource } from "./data/sources";
+export type { Source, SourceId, SourcePublisher } from "./data/sources";
