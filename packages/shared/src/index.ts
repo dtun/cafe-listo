@@ -63,3 +63,59 @@ export {
   regionNotesFor,
 } from "./data/region-notes";
 export type { RegionNoteOverlay } from "./data/region-notes";
+export type {
+  BaseQuantityRule,
+  ChildAgeBand,
+  ConditionalRule,
+  DietaryFlag,
+  Household,
+  HouseholdFlag,
+  MedicalFlag,
+  PerHouseholdRule,
+  PerInfantPerDayRule,
+  PerInfantRule,
+  PerPersonPerDayRule,
+  PerPersonRule,
+  PerPetPerDayRule,
+  PetKind,
+  QuantityRule,
+  QuantityRuleKind,
+} from "./household/types";
+export {
+  CHILD_AGE_BANDS,
+  DEFAULT_HOUSEHOLD_DAYS,
+  DIETARY_FLAGS,
+  MAX_HOUSEHOLD_DAYS,
+  MEDICAL_FLAGS,
+  PET_KINDS,
+} from "./household/types";
+export { hasHouseholdFlag, householdSize, scale } from "./household/scale";
+export type { Container, InteriorDimensionsCm } from "./tote/container";
+export {
+  CONTAINERS,
+  HDX_27_GAL_PROVISIONAL_SPECS,
+  HDX_27_GAL_TOTE,
+} from "./tote/container";
+export type {
+  OverflowLine,
+  OverflowReason,
+  PackedLine,
+  PackItem,
+  PackResult,
+  PackWarning,
+  PackWarningCode,
+} from "./tote/pack-tote";
+export { packTote, STORE_BESIDE_TOTE_HINT } from "./tote/pack-tote";
+export type { AppliesTo, CatalogItem, StoreCategory } from "./catalog/types";
+export { STORE_CATEGORIES } from "./catalog/types";
+export { ADDED_CATALOG_ITEMS, CATALOG_ITEMS } from "./catalog/items";
+export type {
+  ItemRelevance,
+  ResolveKitOptions,
+  ResolvedItem,
+} from "./catalog/resolve-kit";
+export {
+  RELEVANCE_WEIGHT,
+  resolveKit,
+  toPackItems,
+} from "./catalog/resolve-kit";
