@@ -13,4 +13,12 @@ describe("household rules", () => {
       }),
     ).resolves.toBeUndefined();
   });
+
+  it("would catch a zod import (the schema module needs it)", async () => {
+    await expect(
+      jest.isolateModulesAsync(async () => {
+        await import("../household/schema");
+      }),
+    ).rejects.toThrow(/zod must not be loaded/);
+  });
 });
