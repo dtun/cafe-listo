@@ -6,22 +6,25 @@
 - **Auth:** OAuth 2.1. Clients register themselves dynamically and use PKCE (S256). Users sign in with Supabase Auth, and the access token a client receives is the user's Supabase JWT.
 - **Storage:** Supabase Postgres.
   - `checklist_entries` is protected by RLS. The server forwards the caller's JWT, so Postgres decides which rows they can see.
+  - `household_profiles` holds one row per user: FEMA region, state, optional five-digit ZIP, and the household as jsonb. RLS limits users to their own row. Location is never finer than a ZIP.
   - `feedback` is write-only for users: RLS lets them insert their own rows and nothing else. Read it with the service role or the Supabase dashboard.
   - `oauth_clients` and `oauth_codes` are reachable only with the service role.
 - **Hosting:** Railway. Build, start and healthcheck are set on the Railway service itself; `railway.json` is not honored by this project.
 
 ## Tools
 
-| Tool              | Mutates | Purpose                                                      |
-| ----------------- | ------- | ------------------------------------------------------------ |
-| `list_categories` | no      | Category ids, labels, emoji                                  |
-| `list_items`      | no      | Catalog items, filterable by category or essential only      |
-| `get_checklist`   | no      | The user's done state plus overall and per-category progress |
-| `set_item_done`   | yes     | Mark one item packed or not packed (idempotent)              |
-| `reset_checklist` | yes     | Clear the user's checklist                                   |
-| `submit_feedback` | yes     | Send a gap, bug, content error, or idea (after user consent) |
+| Tool              | Mutates | Purpose                                                       |
+| ----------------- | ------- | ------------------------------------------------------------- |
+| `list_categories` | no      | Category ids, labels, emoji                                   |
+| `list_items`      | no      | Catalog items, filterable by category or essential only       |
+| `get_checklist`   | no      | The user's done state plus overall and per-category progress  |
+| `set_item_done`   | yes     | Mark one item packed or not packed (idempotent)               |
+| `reset_checklist` | yes     | Clear the user's checklist                                    |
+| `submit_feedback` | yes     | Send a gap, bug, content error, or idea (after user consent)  |
+| `get_household`   | no      | The user's location (state, ZIP, FEMA region) and household   |
+| `set_household`   | yes     | Partially update the household; derives region from state/ZIP |
 
-Tool definitions live in `packages/shared/src/mcp/tool-registry.ts`. `tools/list` sends each tool's `title` and MCP `annotations`: read-only tools get `readOnlyHint: true`, `set_item_done` is idempotent, `reset_checklist` is idempotent and destructive, and `submit_feedback` is neither. The `initialize` result includes `instructions` telling the assistant when to offer feedback. Each submission logs `feedback_submitted` with its id and kind, never the text.
+Tool definitions live in `packages/shared/src/mcp/tool-registry.ts`. `tools/list` sends each tool's `title` and MCP `annotations`: read-only tools get `readOnlyHint: true`, `set_item_done` is idempotent, `reset_checklist` is idempotent and destructive, `set_household` is idempotent and not destructive, and `submit_feedback` is neither. `set_household` takes a state or a ZIP, derives the FEMA region, rejects an unknown or mismatched location with a hint to ask the user, and validates the merged household with the shared zod schema. The `initialize` result includes `instructions` telling the assistant when to offer feedback. Each submission logs `feedback_submitted` with its id and kind, never the text.
 
 ## Connect a client
 

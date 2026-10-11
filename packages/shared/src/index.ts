@@ -63,3 +63,32 @@ export {
   regionNotesFor,
 } from "./data/region-notes";
 export type { RegionNoteOverlay } from "./data/region-notes";
+export type {
+  BaseQuantityRule,
+  ChildAgeBand,
+  ConditionalRule,
+  DietaryFlag,
+  Household,
+  HouseholdFlag,
+  MedicalFlag,
+  PerHouseholdRule,
+  PerInfantRule,
+  PerPersonPerDayRule,
+  PerPersonRule,
+  PerPetPerDayRule,
+  PetKind,
+  QuantityRule,
+  QuantityRuleKind,
+} from "./household/types";
+export {
+  CHILD_AGE_BANDS,
+  DEFAULT_HOUSEHOLD_DAYS,
+  DIETARY_FLAGS,
+  MAX_HOUSEHOLD_DAYS,
+  MEDICAL_FLAGS,
+  PET_KINDS,
+} from "./household/types";
+export { hasHouseholdFlag, householdSize, scale } from "./household/scale";
+export type { HouseholdPatch } from "./household/patch";
+export { applyHouseholdPatch, isEmptyHouseholdPatch } from "./household/patch";
+export type { HouseholdProfile, ProfileRepository } from "./profile/ports";
