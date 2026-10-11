@@ -1,4 +1,10 @@
-import { EPOCH_CURSOR, isCursor, latestCursor, type Cursor } from "../cursor";
+import {
+  EPOCH_CURSOR,
+  cursorOf,
+  isCursor,
+  latestCursor,
+  type Cursor,
+} from "../cursor";
 import {
   aliasReporters,
   parsePlan,
@@ -200,7 +206,7 @@ export class TriageFeedback {
     }
 
     const feedback = aliasReporters(rows);
-    const advanceTo = latestCursor(rows.map((row) => row.createdAt));
+    const advanceTo = latestCursor(rows.map(cursorOf));
     const issues = await this.issuesForDedupe();
 
     const raw = await attempt("analysis", () =>
@@ -262,10 +268,7 @@ export class TriageFeedback {
     );
     if (stored === null) return EPOCH_CURSOR;
     if (!isCursor(stored)) {
-      throw new Stop(
-        "dependency_failed",
-        `stored cursor is malformed: ${stored}`,
-      );
+      throw new Stop("dependency_failed", "stored cursor is malformed");
     }
     return stored;
   }

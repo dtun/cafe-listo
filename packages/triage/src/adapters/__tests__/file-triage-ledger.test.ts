@@ -12,7 +12,7 @@ const PENDING: PendingPlan = {
     feedbackIds: ["f1", "f2", "f3"],
     issues: [{ number: 12, state: "OPEN", author: "dtun", labels: [] }],
   },
-  advanceTo: "2026-10-03T10:00:00.000000Z",
+  advanceTo: { createdAt: "2026-10-03T10:00:00.000000Z", id: "f3" },
   done: [],
 };
 
@@ -52,7 +52,7 @@ describe("FileTriageLedger", () => {
     await ledger.clearPending(PENDING.advanceTo);
 
     expect(await ledger.getPendingPlan()).toBeNull();
-    expect(await ledger.getCursor()).toBe(PENDING.advanceTo);
+    expect(await ledger.getCursor()).toEqual(PENDING.advanceTo);
     expect(readdirSync(dir).sort()).toEqual(["cursor"]);
   });
 
@@ -64,12 +64,17 @@ describe("FileTriageLedger", () => {
 
   it("refuses a tampered cursor file", async () => {
     await ledger.clearPending(PENDING.advanceTo);
-    writeFileSync(join(dir, "cursor"), "1970-01-01' or '1'='1\n");
+    writeFileSync(
+      join(dir, "cursor"),
+      JSON.stringify({ createdAt: "1970-01-01' or '1'='1", id: "f3" }),
+    );
     await expect(ledger.getCursor()).rejects.toThrow(/does not hold a cursor/);
   });
 
   it("refuses to store a malformed cursor", async () => {
-    await expect(ledger.clearPending("yesterday")).rejects.toThrow(/malformed/);
+    await expect(
+      ledger.clearPending({ createdAt: "yesterday", id: "f3" }),
+    ).rejects.toThrow(/malformed/);
   });
 
   it("refuses a malformed pending plan", async () => {

@@ -11,15 +11,30 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { ExecRequest } from "../adapters/exec";
 import { main, type CliIo } from "../cli";
 import { loadConfig } from "../container";
+import { compareCursors } from "../cursor";
+import type { TriagePlan } from "../plan";
 import { RAW_FEEDBACK } from "../plan/__tests__/fixtures";
 import { FakeExec, stdout } from "./fakes/fake-exec";
 import { TRACKER_ISSUES, fourActionPlan } from "./fakes/world";
+
+/** Storage ids are UUIDs: f1 → 00000000-0000-4000-8000-000000000001, and so on. */
+const uuidFor = (id: string) =>
+  `00000000-0000-4000-8000-${id.slice(1).padStart(12, "0")}`;
+
+/** The #58 plan, with feedback ids as storage spells them. */
+function storagePlan(): TriagePlan {
+  const plan = fourActionPlan();
+  for (const action of plan.actions) {
+    action.feedback_ids = action.feedback_ids.map(uuidFor);
+  }
+  return plan;
+}
 
 /**
  * A fake process world for the real adapters: supabase returns the #58
  * feedback, gh the #58 issues, claude a valid plan. Records every write.
  */
-function fakeWorld(plan: unknown = fourActionPlan()) {
+function fakeWorld(plan: unknown = storagePlan()) {
   const filed: ExecRequest[] = [];
   let failNextCreate = false;
   let created = 100;
@@ -28,20 +43,26 @@ function fakeWorld(plan: unknown = fourActionPlan()) {
     switch (req.file) {
       case "supabase": {
         const sql = args.at(-1)!;
-        const cursor = /> '([^']+)'/.exec(sql)![1];
-        const rows = RAW_FEEDBACK.filter((r) => r.createdAt > cursor).map(
-          (r) => ({
-            id: r.id,
-            user_id: r.userId,
-            kind: r.kind,
-            summary: r.summary,
-            details: null,
-            tool_name: null,
-            item_id: null,
-            user_quote: null,
-            created_at: r.createdAt,
-          }),
-        );
+        const [, createdAt, id] =
+          /> \('([^']+)'::timestamptz, '([^']+)'::uuid\)/.exec(sql)!;
+        const after = { createdAt, id };
+        const rows = RAW_FEEDBACK.filter(
+          (r) =>
+            compareCursors(
+              { createdAt: r.createdAt, id: uuidFor(r.id) },
+              after,
+            ) > 0,
+        ).map((r) => ({
+          id: uuidFor(r.id),
+          user_id: r.userId,
+          kind: r.kind,
+          summary: r.summary,
+          details: null,
+          tool_name: null,
+          item_id: null,
+          user_quote: null,
+          created_at: r.createdAt,
+        }));
         return stdout(JSON.stringify({ boundary: "b", rows, warning: "w" }));
       }
       case "gh": {
@@ -135,10 +156,13 @@ describe("triage run (cli.ts with fakes behind the real adapters)", () => {
       "issue comment",
       "issue create",
     ]);
-    expect(world.filed[0].input).toMatch(/feedback records: f1<\/sub>$/);
-    expect(readFileSync(join(stateDir, "cursor"), "utf8")).toBe(
-      "2026-10-03T10:00:00.000000Z\n",
+    expect(world.filed[0].input).toContain(
+      "feedback records: 00000000-0000-4000-8000-000000000001</sub>",
     );
+    expect(JSON.parse(readFileSync(join(stateDir, "cursor"), "utf8"))).toEqual({
+      createdAt: "2026-10-03T10:00:00.000000Z",
+      id: "00000000-0000-4000-8000-000000000003",
+    });
     expect(existsSync(join(stateDir, "pending.json"))).toBe(false);
     expect(out.join("\n")).toContain(
       "https://github.com/dtun/cafe-listo/issues/101",
@@ -161,12 +185,12 @@ describe("triage run (cli.ts with fakes behind the real adapters)", () => {
     const world = fakeWorld();
     await main(["run"], io(world));
     const log = [...out, ...err].join("\n");
-    const plan = fourActionPlan();
+    const plan = storagePlan();
 
     for (const text of [
       plan.summary,
       ...plan.actions.flatMap((a) => [a.title, a.body, a.reason]),
-      ...RAW_FEEDBACK.flatMap((r) => [r.id, r.userId]),
+      ...RAW_FEEDBACK.flatMap((r) => [uuidFor(r.id), r.userId]),
     ]) {
       if (text) expect(log).not.toContain(text);
     }
@@ -175,7 +199,7 @@ describe("triage run (cli.ts with fakes behind the real adapters)", () => {
   });
 
   it("logs a rejected plan's problems without echoing its PII", async () => {
-    const plan = fourActionPlan();
+    const plan = storagePlan();
     plan.summary = "Jane Doe (jane.doe@example.com) wrote in.";
     plan.actions[0].title = "fix(mobile): call Jane at 555-867-5309";
     plan.actions[2].reason = "spam from 3f2b8c1e-9a4d-4e6f-8b2a-1c3d5e7f9a0b";

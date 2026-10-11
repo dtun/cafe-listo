@@ -1,7 +1,12 @@
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
-import { CURSOR_PATTERN, isCursor, type Cursor } from "../cursor";
+import {
+  CREATED_AT_PATTERN,
+  CURSOR_ID_PATTERN,
+  isCursor,
+  type Cursor,
+} from "../cursor";
 import { TriagePlanSchema } from "../plan";
 import type { PendingPlan, TriageLedger } from "../ports";
 
@@ -18,7 +23,10 @@ const PendingPlanSchema = z.strictObject({
       }),
     ),
   }),
-  advanceTo: z.string().regex(CURSOR_PATTERN),
+  advanceTo: z.strictObject({
+    createdAt: z.string().regex(CREATED_AT_PATTERN),
+    id: z.string().regex(CURSOR_ID_PATTERN),
+  }),
   done: z.array(
     z.strictObject({ index: z.int().min(0), url: z.string().nullable() }),
   ),
@@ -29,7 +37,7 @@ function isMissing(error: unknown): boolean {
 }
 
 /**
- * Ledger in a state dir: `cursor` (one line) and `pending.json`. Every write
+ * Ledger in a state dir: `cursor` (one JSON line) and `pending.json`. Every write
  * goes to a temp file first and is renamed into place, so a crash never
  * leaves a half-written file.
  */
@@ -45,9 +53,14 @@ export class FileTriageLedger implements TriageLedger {
   async getCursor(): Promise<Cursor | null> {
     const text = await this.read(this.cursorFile);
     if (text === null) return null;
-    const cursor = text.trim();
+    let cursor: unknown;
+    try {
+      cursor = JSON.parse(text);
+    } catch {
+      cursor = null;
+    }
     if (!isCursor(cursor)) {
-      throw new Error(`${this.cursorFile} does not hold a cursor: ${cursor}`);
+      throw new Error(`${this.cursorFile} does not hold a cursor`);
     }
     return cursor;
   }
@@ -78,9 +91,10 @@ export class FileTriageLedger implements TriageLedger {
   /** Cursor first: a crash in between leaves a fully-done plan that resumes as a no-op. */
   async clearPending(advanceTo: Cursor): Promise<void> {
     if (!isCursor(advanceTo)) {
-      throw new Error(`refusing to store a malformed cursor: ${advanceTo}`);
+      throw new Error("refusing to store a malformed cursor");
     }
-    await this.write(this.cursorFile, `${advanceTo}\n`);
+    const { createdAt, id } = advanceTo;
+    await this.write(this.cursorFile, `${JSON.stringify({ createdAt, id })}\n`);
     await rm(this.pendingFile, { force: true });
   }
 

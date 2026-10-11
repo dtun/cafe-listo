@@ -45,7 +45,10 @@ describe("SupabaseFeedbackReader", () => {
       "json",
     ]);
     expect(fake.last.args[7]).toContain(
-      `where created_at > '${EPOCH_CURSOR}'::timestamptz`,
+      "where (feedback.created_at, feedback.id) > ('1970-01-01T00:00:00.000000Z'::timestamptz, '00000000-0000-0000-0000-000000000000'::uuid)",
+    );
+    expect(fake.last.args[7]).toContain(
+      "order by feedback.created_at, feedback.id",
     );
     expect(fake.last.args[7]).toContain("limit 500");
     expect(fake.last.args[7]).toContain(`'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'`);
@@ -116,6 +119,8 @@ describe("SupabaseFeedbackReader", () => {
 });
 
 describe("feedbackQuery", () => {
+  const ID = "11111111-1111-4111-8111-111111111111";
+
   it.each([
     "",
     "2026-10-10",
@@ -125,8 +130,40 @@ describe("feedbackQuery", () => {
     "2026-10-10T19:07:28.000000Z; drop table feedback",
     "2026-10-10T19:07:28.1234567Z",
     "2026-10-10T19:07:28.000000Z\nx",
-  ])("refuses to interpolate %j", (cursor) => {
-    expect(() => feedbackQuery(cursor, 10)).toThrow(/malformed cursor/);
+  ])("refuses to interpolate created_at %j", (createdAt) => {
+    expect(() => feedbackQuery({ createdAt, id: ID }, 10)).toThrow(
+      /malformed cursor/,
+    );
+  });
+
+  it.each([
+    "",
+    "f3",
+    "11111111-1111-4111-8111-11111111111",
+    "11111111-1111-4111-8111-111111111111' or '1'='1",
+    "11111111-1111-4111-8111-111111111111'::uuid); drop table feedback; --",
+    "11111111-1111-4111-8111-11111111111G",
+    "11111111-1111-4111-8111-111111111111\n",
+  ])("refuses to interpolate id %j", (id) => {
+    expect(() =>
+      feedbackQuery({ createdAt: "2026-10-10T19:07:28.000000Z", id }, 10),
+    ).toThrow(/malformed cursor/);
+  });
+
+  it.each([
+    ["a string", "2026-10-10T19:07:28.000000Z"],
+    ["null", null],
+    ["an extra key", { ...EPOCH_CURSOR, sql: "drop" }],
+  ])("refuses a cursor that is %s", (_name, cursor) => {
+    expect(() => feedbackQuery(cursor as never, 10)).toThrow(
+      /malformed cursor/,
+    );
+  });
+
+  it("interpolates a valid cursor", () => {
+    expect(
+      feedbackQuery({ createdAt: "2026-10-10T19:07:28.514000Z", id: ID }, 10),
+    ).toContain(`('2026-10-10T19:07:28.514000Z'::timestamptz, '${ID}'::uuid)`);
   });
 
   it.each([0, -1, 1.5, 1001, Number.NaN])("refuses limit %s", (limit) => {

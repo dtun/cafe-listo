@@ -1,9 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { EPOCH_CURSOR } from "../../cursor";
-import { planWith, validPlan } from "../../plan/__tests__/fixtures";
-import { world } from "../../__tests__/fakes/world";
+import {
+  RAW_FEEDBACK,
+  planWith,
+  validPlan,
+} from "../../plan/__tests__/fixtures";
+import {
+  FakePlanAnalyzer,
+  skipEverything,
+} from "../../__tests__/fakes/fake-plan-analyzer";
+import { fixedClock } from "../../__tests__/fakes/fixed-clock";
+import { InMemoryFeedbackReader } from "../../__tests__/fakes/in-memory-feedback-reader";
+import { InMemoryIssueTracker } from "../../__tests__/fakes/in-memory-issue-tracker";
+import { InMemoryTriageLedger } from "../../__tests__/fakes/in-memory-triage-ledger";
+import { POLICY, TRACKER_ISSUES, world } from "../../__tests__/fakes/world";
+import { DEFAULT_LIMITS, TriageFeedback } from "../triage-feedback";
 
-const BATCH_MAX = "2026-10-03T10:00:00.000000Z";
+const BATCH_MAX = { createdAt: "2026-10-03T10:00:00.000000Z", id: "f3" };
 
 describe("TriageFeedback", () => {
   describe("happy path", () => {
@@ -18,7 +31,7 @@ describe("TriageFeedback", () => {
       ]);
       expect(w.tracker.comments.map((c) => c.issueNumber)).toEqual([12]);
       expect(w.ledger.pending).toBeNull();
-      expect(w.ledger.cursor).toBe(BATCH_MAX);
+      expect(w.ledger.cursor).toEqual(BATCH_MAX);
     });
 
     it("labels issues as planned and appends a provenance footer", async () => {
@@ -123,10 +136,13 @@ describe("TriageFeedback", () => {
 
     it("reads from the stored cursor", async () => {
       const w = world();
-      w.ledger.cursor = "2026-10-01T10:00:00.000000Z";
+      w.ledger.cursor = { createdAt: "2026-10-01T10:00:00.000000Z", id: "f1" };
       const result = await w.triage.execute();
 
-      expect(w.reader.calls[0].cursor).toBe("2026-10-01T10:00:00.000000Z");
+      expect(w.reader.calls[0].cursor).toEqual({
+        createdAt: "2026-10-01T10:00:00.000000Z",
+        id: "f1",
+      });
       // f1 is behind the cursor, so the plan that covers it is now invalid.
       expect(result).toMatchObject({
         ok: false,
@@ -174,7 +190,7 @@ describe("TriageFeedback", () => {
       ]);
       expect(w.tracker.comments).toHaveLength(1);
       expect(w.ledger.pending).toBeNull();
-      expect(w.ledger.cursor).toBe(BATCH_MAX);
+      expect(w.ledger.cursor).toEqual(BATCH_MAX);
       if (second.ok) {
         expect(second.data.resumed?.map((a) => [a.index, a.url])).toEqual([
           [3, "https://github.com/dtun/cafe-listo/issues/102"],
@@ -314,7 +330,37 @@ describe("TriageFeedback", () => {
       }
       const w = world();
       await w.triage.execute();
-      expect(w.ledger.cursor).toBe(BATCH_MAX);
+      expect(w.ledger.cursor).toEqual(BATCH_MAX);
+    });
+
+    it("never skips rows that share a timestamp across a batch cut", async () => {
+      const at = "2026-10-05T10:00:00.000000Z";
+      const rows = ["a", "b", "c", "d", "e"].map((id, i) => ({
+        ...RAW_FEEDBACK[0],
+        id,
+        createdAt: i === 0 ? "2026-10-04T10:00:00.000000Z" : at,
+      }));
+      const reader = new InMemoryFeedbackReader(rows);
+      const analyzer = new FakePlanAnalyzer(skipEverything);
+      const ledger = new InMemoryTriageLedger();
+      const triage = new TriageFeedback({
+        reader,
+        tracker: new InMemoryIssueTracker(structuredClone(TRACKER_ISSUES)),
+        analyzer,
+        ledger,
+        clock: fixedClock(),
+        policy: POLICY,
+        limits: { ...DEFAULT_LIMITS, feedback: 2 },
+      });
+
+      for (let run = 0; run < 4; run++) await triage.execute();
+
+      expect(analyzer.inputs.map((i) => i.feedback.map((f) => f.id))).toEqual([
+        ["a", "b"],
+        ["c", "d"],
+        ["e"],
+      ]);
+      expect(ledger.cursor).toEqual({ createdAt: at, id: "e" });
     });
 
     it("stays put when reading feedback fails", async () => {

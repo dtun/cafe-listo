@@ -1,4 +1,4 @@
-import type { Cursor } from "../../cursor";
+import { compareCursors, cursorOf, type Cursor } from "../../cursor";
 import type { FeedbackRecord } from "../../plan";
 import type { FeedbackReader } from "../../ports";
 
@@ -12,8 +12,8 @@ export class InMemoryFeedbackReader implements FeedbackReader {
     this.calls.push({ cursor, limit });
     if (this.failWith) throw this.failWith;
     return this.rows
-      .filter((row) => row.createdAt > cursor)
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+      .filter((row) => compareCursors(cursorOf(row), cursor) > 0)
+      .sort((a, b) => compareCursors(cursorOf(a), cursorOf(b)))
       .slice(0, limit)
       .map((row) => ({ ...row }));
   }

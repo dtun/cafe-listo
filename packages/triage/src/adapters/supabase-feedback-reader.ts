@@ -1,6 +1,11 @@
 import { feedbackKindSchema } from "@cafe-listo/shared";
 import { z } from "zod";
-import { CURSOR_PATTERN, isCursor, type Cursor } from "../cursor";
+import {
+  CREATED_AT_PATTERN,
+  UUID_PATTERN,
+  isCursor,
+  type Cursor,
+} from "../cursor";
 import type { FeedbackRecord } from "../plan";
 import type { FeedbackReader } from "../ports";
 import { ExecError, stderrTail, type Exec } from "./exec";
@@ -9,7 +14,7 @@ export const SUPABASE_TIMEOUT_MS = 120_000;
 const MAX_LIMIT = 1000;
 
 const RowSchema = z.object({
-  id: z.string(),
+  id: z.string().regex(UUID_PATTERN),
   user_id: z.string(),
   kind: feedbackKindSchema,
   summary: z.string(),
@@ -17,20 +22,22 @@ const RowSchema = z.object({
   tool_name: z.string().nullable(),
   item_id: z.string().nullable(),
   user_quote: z.string().nullable(),
-  created_at: z.string().regex(CURSOR_PATTERN),
+  created_at: z.string().regex(CREATED_AT_PATTERN),
 });
 
 /** The CLI prints {boundary, rows, warning} to mark rows untrusted; only `.rows` go on, as data. */
 const OutputSchema = z.object({ rows: z.array(RowSchema) });
 
 /**
- * created_at is selected as fixed-width UTC microseconds so it is a valid
- * Cursor and round-trips exactly through ::timestamptz. Only a value that
- * passed isCursor and an integer limit are interpolated.
+ * created_at is selected as fixed-width UTC microseconds so (created_at, id)
+ * is a valid Cursor and round-trips exactly through ::timestamptz. Rows come
+ * in (created_at, id) order strictly after the cursor, so a batch cut never
+ * skips rows that share a timestamp. Only a cursor that passed isCursor with
+ * a UUID id, and an integer limit, are interpolated.
  */
 export function feedbackQuery(cursor: Cursor, limit: number): string {
-  if (!isCursor(cursor)) {
-    throw new Error(`refusing a malformed cursor: ${JSON.stringify(cursor)}`);
+  if (!isCursor(cursor) || !UUID_PATTERN.test(cursor.id)) {
+    throw new Error("refusing a malformed cursor");
   }
   if (!Number.isInteger(limit) || limit < 1 || limit > MAX_LIMIT) {
     throw new Error(`refusing a bad limit: ${limit}`);
@@ -39,8 +46,8 @@ export function feedbackQuery(cursor: Cursor, limit: number): string {
     "select id, user_id, kind, summary, details, tool_name, item_id, user_quote,",
     `to_char(created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as created_at`,
     "from public.feedback",
-    `where created_at > '${cursor}'::timestamptz`,
-    `order by created_at, id limit ${limit}`,
+    `where (feedback.created_at, feedback.id) > ('${cursor.createdAt}'::timestamptz, '${cursor.id}'::uuid)`,
+    `order by feedback.created_at, feedback.id limit ${limit}`,
   ].join(" ");
 }
 

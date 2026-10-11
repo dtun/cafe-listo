@@ -33,7 +33,7 @@ function describe(a: ActionOutcome): string {
 export function formatReport(report: TriageReport): string {
   const lines = [
     `# Feedback triage${report.dryRun ? " (dry run)" : ""}`,
-    `cursor: ${report.cursor.from} -> ${report.cursor.to}`,
+    `cursor: ${report.cursor.from.createdAt} -> ${report.cursor.to.createdAt}`,
   ];
   if (report.resumed) {
     lines.push("", `## Resumed pending plan (${report.resumed.length} filed)`);
