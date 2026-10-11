@@ -95,7 +95,9 @@ describe("launchd/install.sh", () => {
     const launcher = readFileSync(join(state, "launch.sh"), "utf8");
 
     expect(launcher.trimEnd().split("\n").length).toBeLessThanOrEqual(15);
-    expect(launcher).toContain("git checkout -q --detach origin/main");
+    expect(launcher).toContain(
+      "git checkout -q --detach --force origin/main && git reset -q --hard origin/main && git clean -qfdx -e node_modules",
+    );
     expect(launcher).toContain("pnpm install --frozen-lockfile");
     expect(launcher).toContain("pnpm --filter @cafe-listo/triage build");
     expect(launcher).toContain('"$TRIAGE_STATE_DIR/checkout"');
@@ -104,6 +106,82 @@ describe("launchd/install.sh", () => {
       'exec node packages/triage/dist/cli.js run ${@+"$@"}',
     );
     expect(spawnSync("bash", ["-n", join(state, "launch.sh")]).status).toBe(0);
+  });
+
+  describe("the rendered launcher's checkout steps", () => {
+    /** Runs the rendered launcher up to (not including) install, build and run. */
+    function syncCheckout() {
+      const launcher = readFileSync(join(state, "launch.sh"), "utf8")
+        .split("\n")
+        .filter((line) => !/^(pnpm|exec node) /.test(line))
+        .join("\n");
+      const result = spawnSync("bash", ["-c", launcher], { encoding: "utf8" });
+      expect(result.stderr).toBe("");
+      expect(result.status).toBe(0);
+    }
+
+    const checkout = () => join(state, "checkout");
+    const head = (dir: string) =>
+      execFileSync("git", ["rev-parse", "HEAD"], {
+        cwd: dir,
+        encoding: "utf8",
+      });
+
+    beforeEach(() => {
+      link();
+      const origin = join(main, "..", "origin.git");
+      git(main, "init", "-q", "--bare", origin);
+      git(main, "remote", "add", "origin", origin);
+      git(main, "push", "-q", "origin", "HEAD:main");
+      install("--no-load");
+    });
+
+    it("clones origin and runs exactly origin/main", () => {
+      syncCheckout();
+      expect(head(checkout())).toBe(head(main));
+    });
+
+    it("discards local edits, untracked and ignored files, keeping node_modules", () => {
+      syncCheckout();
+      const co = checkout();
+      writeFileSync(
+        join(co, "packages/triage/launchd/install.sh"),
+        "echo pwned\n",
+      );
+      writeFileSync(join(co, "evil.js"), "steal()\n");
+      writeFileSync(join(co, ".gitignore"), "dist/\n");
+      mkdirSync(join(co, "dist"));
+      writeFileSync(join(co, "dist/cli.js"), "stale()\n");
+      mkdirSync(join(co, "node_modules"));
+      writeFileSync(join(co, "node_modules/.keep"), "cache\n");
+      git(co, "commit", "-qam", "local change");
+
+      syncCheckout();
+
+      expect(head(co)).toBe(head(main));
+      expect(
+        readFileSync(join(co, "packages/triage/launchd/install.sh"), "utf8"),
+      ).toBe(
+        readFileSync(join(main, "packages/triage/launchd/install.sh"), "utf8"),
+      );
+      expect(existsSync(join(co, "evil.js"))).toBe(false);
+      expect(existsSync(join(co, "dist/cli.js"))).toBe(false);
+      expect(existsSync(join(co, ".gitignore"))).toBe(false);
+      expect(existsSync(join(co, "node_modules/.keep"))).toBe(true);
+    });
+
+    it("follows new commits on origin/main", () => {
+      syncCheckout();
+      writeFileSync(join(main, "NEW.md"), "new\n");
+      git(main, "add", "NEW.md");
+      git(main, "commit", "-qm", "new");
+      git(main, "push", "-q", "origin", "HEAD:main");
+
+      syncCheckout();
+
+      expect(head(checkout())).toBe(head(main));
+      expect(existsSync(join(checkout(), "NEW.md"))).toBe(true);
+    });
   });
 
   it("schedules Saturdays at 08:07 without running at load", () => {

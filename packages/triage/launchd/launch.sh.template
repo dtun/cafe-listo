@@ -7,7 +7,7 @@ co="$TRIAGE_STATE_DIR/checkout"
 [ -d "$co/.git" ] || git clone -q "$(git -C "$REPO_DIR" remote get-url origin)" "$co"
 cd "$co"
 git fetch -q origin main
-git checkout -q --detach origin/main
+git checkout -q --detach --force origin/main && git reset -q --hard origin/main && git clean -qfdx -e node_modules
 pnpm install --frozen-lockfile --silent
 pnpm --filter @cafe-listo/triage build >/dev/null
 exec node packages/triage/dist/cli.js run ${@+"$@"}
