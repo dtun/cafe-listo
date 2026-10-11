@@ -89,3 +89,19 @@ export {
   PET_KINDS,
 } from "./household/types";
 export { hasHouseholdFlag, householdSize, scale } from "./household/scale";
+export type { Container, InteriorDimensionsCm } from "./tote/container";
+export {
+  CONTAINERS,
+  HDX_27_GAL_PROVISIONAL_SPECS,
+  HDX_27_GAL_TOTE,
+} from "./tote/container";
+export type {
+  OverflowLine,
+  OverflowReason,
+  PackedLine,
+  PackItem,
+  PackResult,
+  PackWarning,
+  PackWarningCode,
+} from "./tote/pack-tote";
+export { packTote, STORE_BESIDE_TOTE_HINT } from "./tote/pack-tote";
