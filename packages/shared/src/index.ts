@@ -109,3 +109,13 @@ export { packTote, STORE_BESIDE_TOTE_HINT } from "./tote/pack-tote";
 export type { AppliesTo, CatalogItem, StoreCategory } from "./catalog/types";
 export { STORE_CATEGORIES } from "./catalog/types";
 export { ADDED_CATALOG_ITEMS, CATALOG_ITEMS } from "./catalog/items";
+export type {
+  ItemRelevance,
+  ResolveKitOptions,
+  ResolvedItem,
+} from "./catalog/resolve-kit";
+export {
+  RELEVANCE_WEIGHT,
+  resolveKit,
+  toPackItems,
+} from "./catalog/resolve-kit";
