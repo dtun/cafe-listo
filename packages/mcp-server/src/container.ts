@@ -22,6 +22,7 @@ import { SupabaseProfileRepository } from "./adapters/supabase/supabase-profile-
 import type { RequestAuth } from "./auth/types";
 import { GetChecklist } from "./usecases/get-checklist";
 import { GetHousehold } from "./usecases/get-household";
+import { GetTote } from "./usecases/get-tote";
 import { ListCategories } from "./usecases/list-categories";
 import { ListItems } from "./usecases/list-items";
 import { ResetChecklist } from "./usecases/reset-checklist";
@@ -47,6 +48,7 @@ export interface UseCases {
   submitFeedback: SubmitFeedback;
   getHousehold: GetHousehold;
   setHousehold: SetHousehold;
+  getTote: GetTote;
   updateItems: UpdateItems;
 }
 
@@ -87,6 +89,7 @@ export function buildContainer(
     ),
     getHousehold: new GetHousehold(deps.profileRepository),
     setHousehold: new SetHousehold(deps.profileRepository, clock),
+    getTote: new GetTote(deps.profileRepository, repo, clock),
     updateItems: new UpdateItems(repo, CATALOG_ITEMS, clock),
   });
 }

@@ -3,7 +3,7 @@ import type { z } from "zod";
 import type { UseCases } from "../container";
 import { checklistDto, itemDto } from "../dto/checklist";
 import { profileDto } from "../dto/household";
-import { updatedItemsDto } from "../dto/tote";
+import { toteDto, updatedItemsDto } from "../dto/tote";
 import { logInfo } from "../lib/log";
 import type { UseCaseErrorCode, UseCaseResult } from "../usecases/types";
 
@@ -123,6 +123,12 @@ export function buildDispatchTable(
             }),
           ),
         ),
+    ),
+    get_tote: defineTool(
+      "get_tote",
+      toolSchemas.get_tote,
+      async (_args, userId) =>
+        toteDto(unwrap(await usecases.getTote.execute({ userId }))),
     ),
     update_items: defineTool(
       "update_items",

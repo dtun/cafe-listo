@@ -38,6 +38,7 @@ describe("toolRegistry", () => {
     expect(toolRegistry.map((t) => t.name).sort()).toEqual([
       "get_checklist",
       "get_household",
+      "get_tote",
       "list_categories",
       "list_items",
       "reset_checklist",
@@ -64,6 +65,7 @@ describe("toolRegistry", () => {
     expect(toolMutates.submit_feedback).toBe(true);
     expect(toolMutates.get_household).toBe(false);
     expect(toolMutates.set_household).toBe(true);
+    expect(toolMutates.get_tote).toBe(false);
     expect(toolMutates.update_items).toBe(true);
     expect(toolWriteHints.update_items).toEqual({
       destructiveHint: false,

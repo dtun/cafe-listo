@@ -49,6 +49,7 @@ describe("supabaseUseCasesFor", () => {
     expect(Object.keys(usecases).sort()).toEqual([
       "getChecklist",
       "getHousehold",
+      "getTote",
       "listCategories",
       "listItems",
       "resetChecklist",

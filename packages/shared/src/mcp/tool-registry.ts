@@ -39,12 +39,13 @@ export const TOOL_NAMES = [
   "submit_feedback",
   "get_household",
   "set_household",
+  "get_tote",
   "update_items",
 ] as const;
 
 /** Sent in the MCP initialize result. Provider-agnostic: standard MCP only. */
 export const mcpServerInstructions =
-  "Cafe Listo helps people build an emergency prep box. Use list_categories and list_items to browse the catalog, and get_checklist, set_item_done, and reset_checklist to track what the user has packed. Use get_household to recall where the user lives and who they are preparing for, and set_household to save it; ask the user for missing details rather than guessing. If the user wants something the catalog lacks, the guidance looks wrong for their situation, a tool fails or can't do what they asked, or they seem frustrated, offer once to send feedback to the Cafe Listo team with submit_feedback. Tell them exactly what you will send and only call it after they say yes.";
+  "Cafe Listo helps people build an emergency prep box. Use list_categories and list_items to browse the catalog, and get_checklist, set_item_done, and reset_checklist to track what the user has packed. Use get_household to recall where the user lives and who they are preparing for, and set_household to save it; ask the user for missing details rather than guessing. Once a household is saved, use get_tote for the kit sized to it and the user's readiness, and update_items to record what they bought or packed, batching related items into one call. If the user wants something the catalog lacks, the guidance looks wrong for their situation, a tool fails or can't do what they asked, or they seem frustrated, offer once to send feedback to the Cafe Listo team with submit_feedback. Tell them exactly what you will send and only call it after they say yes.";
 
 export const itemStatusSchema = z.enum(ITEM_STATUSES);
 
@@ -169,6 +170,13 @@ export const toolRegistry = [
     }),
   },
   {
+    name: "get_tote",
+    title: "Get tote progress",
+    description:
+      "Get the user's tote: the kit sized for their saved household and region, each item's status (needed, bought or packed), units needed and quantity they have, and where to buy it (buy_at). Also returns packed/bought/needed counts, readiness_percent (packed share of the kit, essentials counted twice; 100 means everything is fully packed), how full the tote will be once the whole kit is packed and what will not fit, items expiring within 60 days or already expired, and which of the region's hazards the packed kit covers. Requires a saved household; if there is none, call set_household first. Call this before answering what the user still needs, and use its item ids with update_items.",
+    inputSchema: z.object({}),
+  },
+  {
     name: "update_items",
     title: "Update tote items",
     description:
@@ -212,6 +220,7 @@ export const toolMutates: Record<ToolName, boolean> = {
   submit_feedback: true,
   get_household: false,
   set_household: true,
+  get_tote: false,
   update_items: true,
 };
 
