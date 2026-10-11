@@ -1,4 +1,9 @@
 import { Category, CategoryId, ChecklistState, PrepItem } from "./types";
+import {
+  MESA_AZ_OVERLAY,
+  applyRegionNotes,
+  regionNotesFor,
+} from "./data/region-notes";
 
 export const CATEGORIES: Category[] = [
   { id: "water", label: "Water & Hydration", emoji: "💧" },
@@ -11,7 +16,8 @@ export const CATEGORIES: Category[] = [
   { id: "morale", label: "Comfort & Morale", emoji: "☕" },
 ];
 
-export const PREP_ITEMS: PrepItem[] = [
+// Region-neutral items. Notes come from region overlays (see data/region-notes.ts).
+export const BASE_PREP_ITEMS: PrepItem[] = [
   // Water & Hydration
   {
     id: "water-1",
@@ -19,8 +25,7 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "water",
     essential: true,
     quantity: "1 gallon per person per day, 3-day supply",
-    regionNote:
-      "Desert climate demands extra water — FEMA recommends 1 gallon/day but consider 1.5 in Mesa summers",
+    regionNote: null,
   },
   {
     id: "water-2",
@@ -28,8 +33,7 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "water",
     essential: true,
     quantity: "1 pack (50 tablets)",
-    regionNote:
-      "Monsoon flooding can contaminate municipal water; tablets are backup purification",
+    regionNote: null,
   },
   {
     id: "water-3",
@@ -45,8 +49,7 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "water",
     essential: true,
     quantity: "12 packets",
-    regionNote:
-      "Critical for extreme heat — Mesa averages 47 days/year over 109.5°F by 2050",
+    regionNote: null,
   },
   {
     id: "water-5",
@@ -64,8 +67,7 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "food",
     essential: true,
     quantity: "3-day supply per person",
-    regionNote:
-      "Store in coolest spot possible — Arizona garage temps can exceed 130°F and degrade shelf life",
+    regionNote: null,
   },
   {
     id: "food-2",
@@ -81,8 +83,7 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "food",
     essential: true,
     quantity: "12 bars",
-    regionNote:
-      "Choose bars that won't melt — avoid chocolate-heavy options in AZ heat",
+    regionNote: null,
   },
   {
     id: "food-4",
@@ -132,8 +133,7 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "medical",
     essential: true,
     quantity: "7-day supply",
-    regionNote:
-      "Heat can degrade medications — rotate frequently and store with cold packs if needed",
+    regionNote: null,
   },
   {
     id: "medical-3",
@@ -141,8 +141,7 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "medical",
     essential: true,
     quantity: "1 bottle",
-    regionNote:
-      "Mesa UV index regularly hits extreme (11+) — sunburn is a real emergency risk",
+    regionNote: null,
   },
   {
     id: "medical-4",
@@ -150,7 +149,7 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "medical",
     essential: false,
     quantity: "1 bottle",
-    regionNote: "Mosquitoes spike during monsoon season (June–September)",
+    regionNote: null,
   },
   {
     id: "medical-5",
@@ -158,8 +157,7 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "medical",
     essential: true,
     quantity: "4 packs",
-    regionNote:
-      "Essential for heat exhaustion first response — activate and apply to neck/armpits",
+    regionNote: null,
   },
   {
     id: "medical-6",
@@ -167,8 +165,7 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "medical",
     essential: true,
     quantity: "2",
-    regionNote:
-      "Soak and wear around neck — can drop body temp 20-30°F in extreme heat",
+    regionNote: null,
   },
   {
     id: "medical-7",
@@ -176,8 +173,7 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "medical",
     essential: false,
     quantity: "1 pack",
-    regionNote:
-      "Wildfire risk is significant — 48% of Mesa buildings face some wildfire exposure",
+    regionNote: null,
   },
 
   // Shelter & Protection
@@ -187,8 +183,7 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "shelter",
     essential: true,
     quantity: "1 (8x10 ft minimum)",
-    regionNote:
-      "Doubles as flash flood water diverter and shade structure in desert sun",
+    regionNote: null,
   },
   {
     id: "shelter-2",
@@ -196,8 +191,7 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "shelter",
     essential: true,
     quantity: "4",
-    regionNote:
-      "Reflects heat away when used as shade — not just for cold weather",
+    regionNote: null,
   },
   {
     id: "shelter-3",
@@ -205,8 +199,7 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "shelter",
     essential: true,
     quantity: "4",
-    regionNote:
-      "Critical for dust storms (haboobs) and wildfire smoke — Mesa gets both regularly",
+    regionNote: null,
   },
   {
     id: "shelter-4",
@@ -214,8 +207,7 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "shelter",
     essential: true,
     quantity: "2",
-    regionNote:
-      "Wet bandana on neck for cooling; dry over face during dust storms",
+    regionNote: null,
   },
   {
     id: "shelter-5",
@@ -223,8 +215,7 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "shelter",
     essential: true,
     quantity: "2",
-    regionNote:
-      "Monsoon storms dump heavy rain fast — flash flood risk is real in Maricopa County",
+    regionNote: null,
   },
   {
     id: "shelter-6",
@@ -232,8 +223,7 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "shelter",
     essential: true,
     quantity: "1 roll",
-    regionNote:
-      "Seal window gaps during dust storms to keep fine particulates out",
+    regionNote: null,
   },
 
   // Tools & Power
@@ -251,8 +241,7 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "tools",
     essential: true,
     quantity: "2 sets (AA and AAA)",
-    regionNote:
-      "Heat degrades batteries faster — check and rotate every 6 months in AZ",
+    regionNote: null,
   },
   {
     id: "tools-3",
@@ -260,8 +249,7 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "tools",
     essential: true,
     quantity: "1 (20,000+ mAh)",
-    regionNote:
-      "Power outages spike during peak heat when the grid is strained — keep phones charged",
+    regionNote: null,
   },
   {
     id: "tools-4",
@@ -277,7 +265,7 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "tools",
     essential: false,
     quantity: "1",
-    regionNote: "Backup power when battery bank dies during extended outage",
+    regionNote: null,
   },
   {
     id: "tools-6",
@@ -295,8 +283,7 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "comms",
     essential: true,
     quantity: "1",
-    regionNote:
-      "NOAA broadcasts dust storm and flash flood warnings — critical when cell towers are down",
+    regionNote: null,
   },
   {
     id: "comms-2",
@@ -312,8 +299,7 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "comms",
     essential: true,
     quantity: "1",
-    regionNote:
-      "Mark evacuation routes and cooling centers — Mesa has designated heat relief stations",
+    regionNote: null,
   },
   {
     id: "comms-4",
@@ -321,7 +307,7 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "comms",
     essential: false,
     quantity: "1",
-    regionNote: "Protects phone during monsoon flash flooding",
+    regionNote: null,
   },
   {
     id: "comms-5",
@@ -347,8 +333,7 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "documents",
     essential: true,
     quantity: "1",
-    regionNote:
-      "Flash floods can soak through standard containers — use a sealed dry bag",
+    regionNote: null,
   },
   {
     id: "documents-3",
@@ -356,7 +341,7 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "documents",
     essential: true,
     quantity: "$100-200 in small bills",
-    regionNote: "ATMs and card readers go down during power outages",
+    regionNote: null,
   },
   {
     id: "documents-4",
@@ -364,8 +349,7 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "documents",
     essential: true,
     quantity: "1 printed copy",
-    regionNote:
-      "Include Mesa-specific shelters, cooling centers, and FEMA Region 9 contact info",
+    regionNote: null,
   },
   {
     id: "documents-5",
@@ -383,8 +367,7 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "morale",
     essential: false,
     quantity: "6 packets",
-    regionNote:
-      "The namesake — compact, shelf-stable, and a morale booster when things get tough",
+    regionNote: null,
   },
   {
     id: "morale-2",
@@ -416,7 +399,7 @@ export const PREP_ITEMS: PrepItem[] = [
     categoryId: "morale",
     essential: false,
     quantity: "1 bag",
-    regionNote: "Choose heat-resistant candy — chocolate melts fast in Arizona",
+    regionNote: null,
   },
   {
     id: "morale-6",
@@ -427,6 +410,13 @@ export const PREP_ITEMS: PrepItem[] = [
     regionNote: null,
   },
 ];
+
+// The default seed carries the Region 9 / Arizona (Mesa) notes so existing
+// clients keep working until they opt in to region selection.
+export const PREP_ITEMS: PrepItem[] = applyRegionNotes(
+  BASE_PREP_ITEMS,
+  regionNotesFor(MESA_AZ_OVERLAY.region, "AZ"),
+);
 
 export function getItemsByCategory(categoryId: CategoryId): PrepItem[] {
   return PREP_ITEMS.filter((item) => item.categoryId === categoryId);
