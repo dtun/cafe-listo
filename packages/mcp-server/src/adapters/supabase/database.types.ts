@@ -78,6 +78,33 @@ export const oauthCodeColumns = [
   "expires_at",
 ] as const satisfies readonly (keyof OAuthCodeRow)[];
 
+/** A Postgres `json`/`jsonb` value. */
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
+
+export type HouseholdProfileRow = {
+  user_id: string;
+  region: number;
+  state: string;
+  zip: string | null;
+  household: Json;
+  updated_at: string;
+};
+
+export const householdProfileColumns = [
+  "user_id",
+  "region",
+  "state",
+  "zip",
+  "household",
+  "updated_at",
+] as const satisfies readonly (keyof HouseholdProfileRow)[];
+
 export type Database = {
   public: {
     Tables: {
@@ -93,6 +120,13 @@ export type Database = {
         Insert: Pick<FeedbackRow, "user_id" | "kind" | "summary"> &
           Partial<Omit<FeedbackRow, "user_id" | "kind" | "summary">>;
         Update: Partial<FeedbackRow>;
+        Relationships: [];
+      };
+      household_profiles: {
+        Row: HouseholdProfileRow;
+        Insert: Omit<HouseholdProfileRow, "zip" | "updated_at"> &
+          Partial<Pick<HouseholdProfileRow, "zip" | "updated_at">>;
+        Update: Partial<HouseholdProfileRow>;
         Relationships: [];
       };
       oauth_clients: {

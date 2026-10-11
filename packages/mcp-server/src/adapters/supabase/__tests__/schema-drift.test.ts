@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   checklistEntryColumns,
   feedbackColumns,
+  householdProfileColumns,
   oauthClientColumns,
   oauthCodeColumns,
 } from "../database.types";
@@ -50,6 +51,12 @@ describe("schema drift", () => {
 
   it("feedback row type matches the migrations", () => {
     expect([...feedbackColumns].sort()).toEqual(migrationColumns("feedback"));
+  });
+
+  it("household_profiles row type matches the migrations", () => {
+    expect([...householdProfileColumns].sort()).toEqual(
+      migrationColumns("household_profiles"),
+    );
   });
 
   it("oauth_clients row type matches the migrations", () => {
