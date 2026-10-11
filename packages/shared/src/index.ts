@@ -106,3 +106,5 @@ export type {
   PackWarningCode,
 } from "./tote/pack-tote";
 export { packTote, STORE_BESIDE_TOTE_HINT } from "./tote/pack-tote";
+export type { AppliesTo, CatalogItem, StoreCategory } from "./catalog/types";
+export { STORE_CATEGORIES } from "./catalog/types";
