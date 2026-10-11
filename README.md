@@ -10,6 +10,7 @@ Emergency preparedness checklist. The item catalog in `packages/shared` covers e
 | `packages/mobile`     | Expo 52 / React Native app with on-device storage                           |
 | `packages/landing`    | Vite + React landing page                                                   |
 | `packages/mcp-server` | Remote MCP server: Hono on Node 22, Supabase Postgres + RLS, OAuth 2.1      |
+| `packages/triage`     | Weekly feedback triage loop: feedback in, validated plan, issues filed      |
 
 ## Setup
 
@@ -53,7 +54,7 @@ The Railway service's build, start and healthcheck are set on the service itself
 
 ## Contributing
 
-Use [Conventional Commits](https://www.conventionalcommits.org/). Tests live in `__tests__/` next to the source: Jest for `shared` and `mobile`, Vitest for `landing` and `mcp-server`. Run `pnpm lint:fix` and `pnpm format` after changes and `pnpm typecheck` before committing; CI runs lint, typecheck and tests. Agent conventions are in [AGENTS.md](AGENTS.md).
+Use [Conventional Commits](https://www.conventionalcommits.org/). Tests live in `__tests__/` next to the source: Jest for `shared` and `mobile`, Vitest for `landing`, `mcp-server` and `triage`. Run `pnpm lint:fix` and `pnpm format` after changes and `pnpm typecheck` before committing; CI runs lint, typecheck and tests. Agent conventions are in [AGENTS.md](AGENTS.md).
 
 ## Roadmap
 

@@ -1,0 +1,13 @@
+#!/bin/bash
+# Rendered by packages/triage/launchd/install.sh. Builds and runs merged origin/main only.
+set -euo pipefail
+export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:$PATH"
+export TRIAGE_STATE_DIR="@@STATE_DIR@@" REPO_DIR="@@REPO_DIR@@"
+co="$TRIAGE_STATE_DIR/checkout"
+[ -d "$co/.git" ] || git clone -q "$(git -C "$REPO_DIR" remote get-url origin)" "$co"
+cd "$co"
+git fetch -q origin main
+git checkout -q --detach --force origin/main && git reset -q --hard origin/main && git clean -qfdx -e node_modules
+pnpm install --frozen-lockfile --silent
+pnpm --filter @cafe-listo/triage build >/dev/null
+exec node packages/triage/dist/cli.js run ${@+"$@"}

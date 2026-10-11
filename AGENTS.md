@@ -8,6 +8,7 @@ Emergency preparedness checklist app. pnpm monorepo with TypeScript (strict mode
 - `packages/landing` — Vite + React landing page
 - `packages/mobile` — Expo 52 / React Native mobile app
 - `packages/mcp-server` — Remote MCP server (Hono on Node 22, Supabase, OAuth 2.1); see `docs/mcp-setup.md`
+- `packages/triage` — Weekly feedback triage loop (validated plan → GitHub issues); see its README. Domain terms in `CONTEXT.md`
 
 ## Scripts
 
@@ -25,5 +26,5 @@ Emergency preparedness checklist app. pnpm monorepo with TypeScript (strict mode
 - Always run `pnpm lint:fix` after making changes
 - Always run `pnpm format` after making changes
 - Run `pnpm typecheck` before committing
-- Tests: Jest for shared/mobile, Vitest for landing and mcp-server. Tests live in `__tests__/` co-located with source.
+- Tests: Jest for shared/mobile, Vitest for landing, mcp-server and triage. Tests live in `__tests__/` co-located with source.
 - Conventional Commits for all commit messages
