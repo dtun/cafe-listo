@@ -13,9 +13,6 @@ export interface Cursor {
 export const CREATED_AT_PATTERN =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/;
 
-/** Feedback ids are UUIDs in storage; fakes may use short ids. */
-export const CURSOR_ID_PATTERN = /^[A-Za-z0-9-]{1,64}$/;
-
 export const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -24,35 +21,29 @@ export const EPOCH_CURSOR: Cursor = Object.freeze({
   id: "00000000-0000-0000-0000-000000000000",
 });
 
-/** Strict: anything else must never reach SQL or the ledger. */
+/**
+ * Strict: exactly `createdAt` (fixed-width UTC) and `id` (a UUID). Both are
+ * interpolated into SQL, so anything else must never get that far.
+ */
 export function isCursor(value: unknown): value is Cursor {
   if (typeof value !== "object" || value === null) return false;
-  const keys = Object.keys(value).sort();
-  if (keys.join(",") !== "createdAt,id") return false;
+  if (Object.keys(value).sort().join(",") !== "createdAt,id") return false;
   const { createdAt, id } = value as Record<string, unknown>;
   return (
     typeof createdAt === "string" &&
     CREATED_AT_PATTERN.test(createdAt) &&
     typeof id === "string" &&
-    CURSOR_ID_PATTERN.test(id)
+    UUID_PATTERN.test(id)
   );
 }
 
-export function cursorOf(row: { createdAt: string; id: string }): Cursor {
-  return { createdAt: row.createdAt, id: row.id };
-}
-
-/** Negative, zero or positive, in (created_at, id) order. */
-export function compareCursors(a: Cursor, b: Cursor): number {
-  if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? -1 : 1;
-  if (a.id !== b.id) return a.id < b.id ? -1 : 1;
-  return 0;
-}
-
-/** The latest of the given cursors. */
-export function latestCursor(values: Cursor[]): Cursor {
-  return values.reduce(
-    (a, b) => (compareCursors(b, a) > 0 ? cursorOf(b) : a),
+/** The latest of the given rows in (created_at, id) order, starting from the epoch. */
+export function latestCursor(rows: Cursor[]): Cursor {
+  return rows.reduce<Cursor>(
+    (a, b) =>
+      b.createdAt > a.createdAt || (b.createdAt === a.createdAt && b.id > a.id)
+        ? { createdAt: b.createdAt, id: b.id }
+        : a,
     EPOCH_CURSOR,
   );
 }

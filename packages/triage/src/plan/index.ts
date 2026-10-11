@@ -1,10 +1,17 @@
 /**
- * TriagePlan module: deep, pure and in-process. Its interface is the plan
- * schema, reporter aliasing and plan validation; adapters and the use case
- * depend on it, never the other way round.
+ * The triage rules: pure, no I/O. The plan schema, plan validation, reporter
+ * aliasing and the cursor. The CLI depends on it, never the other way round.
  */
 import type { Feedback, FeedbackRecord } from "./types";
 
+export {
+  CREATED_AT_PATTERN,
+  EPOCH_CURSOR,
+  UUID_PATTERN,
+  isCursor,
+  latestCursor,
+  type Cursor,
+} from "./cursor";
 export {
   TriagePlanSchema,
   parsePlan,

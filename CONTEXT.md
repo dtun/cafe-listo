@@ -10,12 +10,10 @@ Terms as the code and docs use them.
 
 **Triage plan**: the analyzer's proposal for one batch of feedback, made of a summary and a list of triage actions. The plan only counts once `validatePlan` returns no problems, and a single problem rejects the whole plan.
 
-**Triage action**: one step of a plan: `create_issue` (labelled `feedback` and `needs-triage`), `comment_issue` on an existing issue, or `skip` with a reason. Every feedback id appears in at least one action.
+**Triage action**: one step of a plan: `create_issue` (labelled `feedback` and `needs-triage`), `comment_issue` on an existing issue, or `skip` with a reason. Every feedback id appears in at least one action. Each filed body ends with a hidden provenance marker, `<!-- triage:<planId>:<index> -->`.
 
 **Triage policy**: the limits a plan is validated against: allowed and required labels, caps on actions and comments, trusted authors whose issues may get comments, and the title pattern and scopes.
 
-**Triage ledger**: the loop's durable state: the cursor plus at most one pending plan, with the actions already done, and the run lock. A failed run resumes its pending plan and never asks the model again.
-
-**Provenance marker**: a hidden `<!-- triage:<planId>:<index> -->` at the end of every filed issue or comment. It lets a resumed plan find an action that reached GitHub but was never recorded as done.
+**Triage ledger**: the state dir: the cursor, at most one pending plan (with the actions already done), and the run lock. A failed run resumes its pending plan and never asks the model again.
 
 **Cursor**: the `(created_at, id)` of the newest feedback already triaged, with `created_at` as fixed-width UTC with microseconds. Feedback is read in that order strictly after it, so rows sharing a timestamp are never skipped. It moves only after every action in a plan has succeeded.
