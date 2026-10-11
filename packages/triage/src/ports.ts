@@ -3,7 +3,7 @@
  * has a production adapter in adapters/ and an in-memory fake in
  * __tests__/fakes/.
  */
-import type { Cursor } from "./cursor";
+import type { Cursor } from "./plan/cursor";
 import type { Feedback, FeedbackRecord, IssueRef, TriagePlan } from "./plan";
 
 export interface FeedbackReader {

@@ -1,4 +1,4 @@
-import { compareCursors, cursorOf, type Cursor } from "../../cursor";
+import { compareCursors, cursorOf, type Cursor } from "../../plan/cursor";
 import type { FeedbackRecord } from "../../plan";
 import type { FeedbackReader } from "../../ports";
 

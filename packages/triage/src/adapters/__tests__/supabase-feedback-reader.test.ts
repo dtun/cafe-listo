@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { feedbackKindSchema } from "@cafe-listo/shared";
 import { describe, expect, it } from "vitest";
 import { FakeExec, stdout } from "../../__tests__/fakes/fake-exec";
-import { EPOCH_CURSOR } from "../../cursor";
+import { EPOCH_CURSOR } from "../../plan/cursor";
 import { ExecError } from "../exec";
 import {
   SupabaseFeedbackReader,

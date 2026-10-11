@@ -4,7 +4,7 @@ import {
   isCursor,
   latestCursor,
   type Cursor,
-} from "../cursor";
+} from "../plan/cursor";
 import {
   aliasReporters,
   parsePlan,

@@ -6,7 +6,7 @@ import {
   CURSOR_ID_PATTERN,
   isCursor,
   type Cursor,
-} from "../cursor";
+} from "../plan/cursor";
 import { TriagePlanSchema } from "../plan";
 import type { PendingPlan, TriageLedger } from "../ports";
 

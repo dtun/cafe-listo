@@ -5,7 +5,7 @@ import {
   UUID_PATTERN,
   isCursor,
   type Cursor,
-} from "../cursor";
+} from "../plan/cursor";
 import type { FeedbackRecord } from "../plan";
 import type { FeedbackReader } from "../ports";
 import { ExecError, stderrTail, type Exec } from "./exec";

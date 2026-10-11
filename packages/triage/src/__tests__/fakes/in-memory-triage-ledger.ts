@@ -1,4 +1,4 @@
-import type { Cursor } from "../../cursor";
+import type { Cursor } from "../../plan/cursor";
 import type { PendingPlan, TriageLedger } from "../../ports";
 
 export class InMemoryTriageLedger implements TriageLedger {

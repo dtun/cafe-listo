@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EPOCH_CURSOR } from "../../cursor";
+import { EPOCH_CURSOR } from "../../plan/cursor";
 import {
   RAW_FEEDBACK,
   planWith,

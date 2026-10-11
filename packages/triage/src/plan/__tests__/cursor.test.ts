@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  EPOCH_CURSOR,
-  compareCursors,
-  isCursor,
-  latestCursor,
-} from "../cursor";
+import { EPOCH_CURSOR, compareCursors, isCursor, latestCursor } from "../index";
 
 const T = "2026-10-05T10:00:00.000000Z";
 

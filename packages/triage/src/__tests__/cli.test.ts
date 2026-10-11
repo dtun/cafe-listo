@@ -11,7 +11,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { ExecRequest } from "../adapters/exec";
 import { main, type CliIo } from "../cli";
 import { loadConfig } from "../container";
-import { compareCursors } from "../cursor";
+import { compareCursors } from "../plan/cursor";
 import type { TriagePlan } from "../plan";
 import { RAW_FEEDBACK } from "../plan/__tests__/fixtures";
 import { FakeExec, stdout } from "./fakes/fake-exec";
