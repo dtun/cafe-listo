@@ -91,3 +91,4 @@ export {
 export { hasHouseholdFlag, householdSize, scale } from "./household/scale";
 export type { HouseholdPatch } from "./household/patch";
 export { applyHouseholdPatch, isEmptyHouseholdPatch } from "./household/patch";
+export type { HouseholdProfile, ProfileRepository } from "./profile/ports";
