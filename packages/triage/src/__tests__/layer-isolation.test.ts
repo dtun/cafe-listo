@@ -39,9 +39,33 @@ const BANNED = [
   /^(node:)?fs(\/promises)?$/,
 ];
 
+/** Ports, the use case and adapters depend on the plan module, never the other way round. */
+const PLAN_BANNED = [
+  ...BANNED,
+  /(^|\/)ports$/,
+  /(^|\/)usecases(\/|$)/,
+  /(^|\/)adapters$/,
+];
+
 describe("layer isolation", () => {
-  it("keeps the plan module pure", () => {
-    expect(violations("plan", BANNED)).toEqual([]);
+  it("keeps the plan module pure and dependency-free", () => {
+    expect(violations("plan", PLAN_BANNED)).toEqual([]);
+  });
+
+  it.each([
+    "../ports",
+    "../usecases/triage-feedback",
+    "../usecases/types",
+    "../adapters/exec",
+    "../container",
+  ])("would catch the plan module importing %s", (spec) => {
+    expect(PLAN_BANNED.some((re) => re.test(spec))).toBe(true);
+  });
+
+  it("lets the plan module import its own files, shared and zod", () => {
+    for (const spec of ["./schema", "./types", "@cafe-listo/shared", "zod"]) {
+      expect(PLAN_BANNED.some((re) => re.test(spec))).toBe(false);
+    }
   });
 
   it("keeps the use case free of adapters, processes and the filesystem", () => {
