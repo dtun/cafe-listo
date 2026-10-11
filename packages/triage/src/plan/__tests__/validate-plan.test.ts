@@ -37,69 +37,81 @@ describe("validatePlan", () => {
     [
       "unaccounted feedback",
       () => withActions(CREATE, COMMENT),
-      "unaccounted feedback: f3",
+      "1 feedback id of 3 in no action",
     ],
     [
       "unknown feedback id",
       () => planWith(2, { feedback_ids: ["f3", "f9"] }),
-      "unknown feedback ids: f9",
+      "action 2 (skip): 1 unknown feedback id",
     ],
     // Labels.
     [
       "disallowed label",
       () => planWith(0, { labels: [...CREATE.labels!, "priority-high"] }),
-      "disallowed labels priority-high on:",
+      "action 0 (create_issue): 1 label outside the allowlist",
     ],
     [
       "ready-for-agent",
       () => planWith(0, { labels: [...CREATE.labels!, "ready-for-agent"] }),
-      "disallowed labels ready-for-agent on:",
+      "action 0 (create_issue): forbidden label ready-for-agent",
     ],
     [
       "missing feedback label",
       () => planWith(0, { labels: ["needs-triage", "feature", "mcp-server"] }),
-      "missing required labels:",
+      "action 0 (create_issue): missing required labels",
     ],
     [
       "missing needs-triage label",
       () => planWith(0, { labels: ["feedback", "feature", "mcp-server"] }),
-      "missing required labels:",
+      "action 0 (create_issue): missing required labels",
     ],
     // Titles.
     [
       "non-conventional title",
       () => planWith(0, { title: "Add custom quantities" }),
-      "bad title: Add custom quantities",
+      "action 0 (create_issue): title is not",
     ],
     [
       "newline in title",
       () => planWith(0, { title: "feat(mobile): something\nmore" }),
-      "bad title:",
+      "action 0 (create_issue): title is not",
     ],
     [
       "trailing newline in title",
       () => planWith(0, { title: "feat(mobile): trailing newline\n" }),
-      "bad title:",
+      "action 0 (create_issue): title is not",
     ],
     [
       "unknown scope",
       () => planWith(0, { title: "feat(billing): charge per household" }),
-      "bad title:",
+      "action 0 (create_issue): title is not",
     ],
     [
       "create without title",
       () => planWith(0, { title: undefined }),
-      "bad title:",
+      "action 0 (create_issue): title is not",
     ],
     // Bodies.
-    ["empty body", () => planWith(0, { body: "" }), "empty body:"],
-    ["blank body", () => planWith(0, { body: "  \n " }), "empty body:"],
-    ["empty comment", () => planWith(1, { body: "" }), "empty comment on #12"],
+    [
+      "empty body",
+      () => planWith(0, { body: "" }),
+      "action 0 (create_issue): empty body",
+    ],
+    [
+      "blank body",
+      () => planWith(0, { body: "  \n " }),
+      "action 0 (create_issue): empty body",
+    ],
+    [
+      "empty comment",
+      () => planWith(1, { body: "" }),
+      "action 1 (comment_issue): empty body",
+    ],
     // PII.
     [
       "email",
       () => planWithBodyText("Contact jane.doe@example.com"),
-      "possible personal info in: feat(mcp-server)",
+      "action 0 (create_issue): possible email in body",
     ],
     [
       "uuid",
@@ -107,12 +119,42 @@ describe("validatePlan", () => {
         planWith(1, {
           body: `${COMMENT.body}\nuser 3f2b8c1e-9a4d-4e6f-8b2a-1c3d5e7f9a0b`,
         }),
-      "possible personal info in: comment #12",
+      "action 1 (comment_issue): possible UUID in body",
     ],
     [
       "phone",
       () => planWithBodyText("Call 555-867-5309"),
-      "possible personal info in: feat(mcp-server)",
+      "action 0 (create_issue): possible phone number in body",
+    ],
+    [
+      "email in a title",
+      () => planWith(0, { title: "fix(mobile): reply to jane@example.com" }),
+      "action 0 (create_issue): possible email in title",
+    ],
+    [
+      "PII in the summary",
+      () => ({ ...validPlan(), summary: "Jane (555-867-5309) wrote in." }),
+      "plan: possible phone number in summary",
+    ],
+    [
+      "a link in the summary",
+      () => ({ ...validPlan(), summary: "See evil.example/x for more." }),
+      "plan: link in summary",
+    ],
+    [
+      "PII in a reason",
+      () => planWith(0, { reason: "From jane@example.com" }),
+      "action 0 (create_issue): possible email in reason",
+    ],
+    [
+      "PII in a skip's reason",
+      () => planWith(2, { reason: "spam from jane@example.com" }),
+      "action 2 (skip): possible email in reason",
+    ],
+    [
+      "a link in a reason",
+      () => planWith(1, { reason: "Like [this](//evil.example)" }),
+      "action 1 (comment_issue): link in reason",
     ],
     // Caps.
     [
@@ -139,58 +181,125 @@ describe("validatePlan", () => {
     [
       "two comments on one issue",
       () => withActions(CREATE, COMMENT, SKIP, COMMENT),
-      "multiple comments on #12",
+      "2 comments on #12",
     ],
     // Comment targets.
     [
       "comment without issue_number",
       () => planWith(1, { issue_number: undefined }),
-      "comment without issue_number",
+      "action 1 (comment_issue): no issue_number",
     ],
     [
       "comment on an issue not in ctx",
       () => planWith(1, { issue_number: 99 }),
-      "comment targets unknown issue #99",
+      "action 1 (comment_issue): targets #99, which was not shown",
     ],
     [
       "comment on an outsider's unlabelled issue",
       () => planWith(1, { issue_number: 20 }),
-      "comment target #20 not opened by a trusted author or labelled feedback",
+      "action 1 (comment_issue): targets #20, not opened by a trusted author or labelled feedback",
     ],
-    // Mentions, cross-repo refs, URLs, unknown #N.
-    ["@-mention", () => planWithBodyText("thanks @octocat"), "@-mention in:"],
-    ["team mention", () => planWithBodyText("cc @some-team"), "@-mention in:"],
+    // Mentions, cross-repo refs, links, unknown #N.
+    [
+      "@-mention",
+      () => planWithBodyText("thanks @octocat"),
+      "action 0 (create_issue): @-mention in body",
+    ],
+    [
+      "team mention",
+      () => planWithBodyText("cc @some-team"),
+      "action 0 (create_issue): @-mention in body",
+    ],
     [
       "@-mention in a comment",
       () => planWith(1, { body: `${COMMENT.body}\n@dtun please look` }),
-      "@-mention in: comment #12",
+      "action 1 (comment_issue): @-mention in body",
     ],
     [
       "cross-repo reference",
       () => planWithBodyText("see other/repo#4"),
-      "cross-repo reference in:",
+      "action 0 (create_issue): cross-repo reference in body",
     ],
     [
       "https url",
       () => planWithBodyText("see https://evil.example/login"),
-      "link in:",
+      "action 0 (create_issue): link in body",
     ],
-    ["www url", () => planWithBodyText("visit www.evil.example"), "link in:"],
+    [
+      "www url",
+      () => planWithBodyText("visit www.evil.example"),
+      "action 0 (create_issue): link in body",
+    ],
     [
       "url in title",
       () => planWith(0, { title: "feat(mobile): see http://x.example" }),
-      "link in:",
+      "action 0 (create_issue): link in title",
     ],
     [
       "unknown #N",
       () => planWithBodyText("Related to #77"),
-      "unknown issue reference #77 in:",
+      "action 0 (create_issue): body references #77, not shown",
     ],
   ])("rejects %s", (_name, plan, expected) => {
     it(`reports "${expected}"`, () => {
       expect(messages(plan())).toEqual(
         expect.arrayContaining([expect.stringContaining(expected)]),
       );
+    });
+  });
+
+  it("tags problems with the offending action's index", () => {
+    const [p] = validatePlan(planWithBodyText("thanks @octocat"), CONTEXT);
+    expect(p).toMatchObject({ rule: "mention", action: 0 });
+  });
+
+  describe("never echoes plan text in problems", () => {
+    const SECRETS = [
+      "jane.doe@example.com",
+      "555-867-5309",
+      "3f2b8c1e-9a4d-4e6f-8b2a-1c3d5e7f9a0b",
+      "Jane Doe",
+      "priority-high",
+      "f9-secret",
+      "octocat",
+    ];
+    const leaky = (): TriagePlan => ({
+      summary: "Jane Doe at jane.doe@example.com called 555-867-5309.",
+      actions: [
+        {
+          ...CREATE,
+          title: "Jane Doe 555-867-5309 wants jane.doe@example.com",
+          body: "@octocat 3f2b8c1e-9a4d-4e6f-8b2a-1c3d5e7f9a0b //evil.example",
+          labels: ["priority-high"],
+          feedback_ids: ["f1", "f9-secret"],
+          reason: "Jane Doe asked",
+        },
+        { ...COMMENT, body: "jane.doe@example.com", reason: "555-867-5309" },
+        { ...SKIP, reason: "Jane Doe, 3f2b8c1e-9a4d-4e6f-8b2a-1c3d5e7f9a0b" },
+      ],
+    });
+
+    it("finds the problems", () => {
+      expect(messages(leaky()).length).toBeGreaterThan(8);
+    });
+
+    it.each(SECRETS)("does not contain %s", (secret) => {
+      expect(messages(leaky()).join("\n")).not.toContain(secret);
+    });
+
+    it("keeps schema problems free of model-written keys and values", () => {
+      const result = parsePlan({
+        ...validPlan(),
+        "jane.doe@example.com": "555-867-5309",
+        actions: [{ ...CREATE, type: "Jane Doe" }],
+      });
+      expect(result.ok).toBe(false);
+      const text = !result.ok
+        ? result.problems.map((p) => p.message).join("\n")
+        : "";
+      for (const secret of ["jane.doe", "555-867-5309", "Jane Doe"]) {
+        expect(text).not.toContain(secret);
+      }
     });
   });
 
@@ -232,7 +341,7 @@ describe("validatePlan", () => {
       labels: [...CREATE.labels!, "ready-for-agent"],
     });
     expect(messages(plan, ctx).join("\n")).toContain(
-      "disallowed labels ready-for-agent",
+      "forbidden label ready-for-agent",
     );
   });
 
@@ -242,9 +351,7 @@ describe("validatePlan", () => {
       policy: { ...CONTEXT.policy, trustedAuthors: ["outsider"] },
     };
     expect(messages(planWith(1, { issue_number: 20 }), ctx)).toEqual([]);
-    expect(messages(validPlan(), ctx).join("\n")).toContain(
-      "comment target #12",
-    );
+    expect(messages(validPlan(), ctx).join("\n")).toContain("targets #12");
   });
 
   it("takes caps from the policy", () => {
@@ -270,7 +377,7 @@ describe("validatePlan", () => {
       "+44 20 7946 0958",
     ])("flags %s", (phone) => {
       expect(messages(planWithBodyText(`call ${phone}`)).join("\n")).toContain(
-        "possible personal info in:",
+        "possible phone number in body",
       );
     });
 
@@ -286,11 +393,13 @@ describe("validatePlan", () => {
     });
   });
 
-  it("ignores text in skip actions", () => {
-    const plan = planWith(2, { reason: "spam from jane@example.com" });
+  it("ignores mentions and #N in reasons and the summary (they stay local)", () => {
+    const plan = {
+      ...planWith(1, { reason: "Open issue #12 covers it; cc @dtun" }),
+      summary: "Commented on #12 and #999.",
+    };
     expect(messages(plan)).toEqual([]);
   });
-
   it("ships a default policy matching #58", () => {
     expect(DEFAULT_POLICY.maxActions).toBe(10);
     expect(DEFAULT_POLICY.maxComments).toBe(10);

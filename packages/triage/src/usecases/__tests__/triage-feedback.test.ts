@@ -37,7 +37,7 @@ describe("TriageFeedback", () => {
       expect(w.tracker.comments[0].body).toMatch(/feedback records: f2/);
     });
 
-    it("reports the summary, each action's url and the skips", async () => {
+    it("reports counts, indexes, types and urls of what it filed", async () => {
       const w = world();
       const result = await w.triage.execute();
       if (!result.ok) throw new Error(result.error.message);
@@ -46,24 +46,63 @@ describe("TriageFeedback", () => {
         dryRun: false,
         status: "triaged",
         feedbackCount: 3,
-        summary: validPlan().summary,
         cursor: { from: EPOCH_CURSOR, to: BATCH_MAX },
         resumed: null,
       });
-      expect(result.data.actions.map((a) => [a.target, a.url])).toEqual([
-        [
-          "feat(mcp-server): support custom quantities per household member",
-          "https://github.com/dtun/cafe-listo/issues/101",
-        ],
-        ["#12", "https://github.com/dtun/cafe-listo/issues/12#issuecomment-1"],
-        [
-          "fix(mobile): checked items reset after reconnect",
-          "https://github.com/dtun/cafe-listo/issues/102",
-        ],
+      expect(result.data.actions).toEqual([
+        {
+          index: 0,
+          type: "create_issue",
+          feedbackCount: 1,
+          url: "https://github.com/dtun/cafe-listo/issues/101",
+        },
+        {
+          index: 1,
+          type: "comment_issue",
+          issueNumber: 12,
+          feedbackCount: 1,
+          url: "https://github.com/dtun/cafe-listo/issues/12#issuecomment-1",
+        },
+        {
+          index: 3,
+          type: "create_issue",
+          feedbackCount: 1,
+          url: "https://github.com/dtun/cafe-listo/issues/102",
+        },
       ]);
-      expect(result.data.skips).toEqual([
-        { index: 2, feedbackIds: ["f3"], reason: "Smoke test." },
-      ]);
+      expect(result.data.skips).toEqual([{ index: 2, feedbackCount: 1 }]);
+    });
+
+    it("keeps plan and feedback text out of the report", async () => {
+      const w = world();
+      const result = await w.triage.execute();
+      const json = JSON.stringify(result);
+      for (const text of [
+        validPlan().summary,
+        "support custom quantities",
+        "Smoke test.",
+        "New need not covered",
+        "f1",
+        "bbbbbbbb",
+      ]) {
+        expect(json).not.toContain(text);
+      }
+    });
+
+    it("keeps plan text out of an action failure", async () => {
+      const w = world();
+      w.tracker.failWriteAt = 1;
+      const result = await w.triage.execute();
+      expect(result).toMatchObject({
+        ok: false,
+        error: { code: "action_failed" },
+      });
+      if (!result.ok) {
+        expect(result.error.message).toMatch(
+          /^action 0 \(create_issue\) failed/,
+        );
+        expect(result.error.message).not.toContain("custom quantities");
+      }
     });
 
     it("shows the analyzer aliased feedback, open and recent closed issues", async () => {
@@ -137,8 +176,8 @@ describe("TriageFeedback", () => {
       expect(w.ledger.pending).toBeNull();
       expect(w.ledger.cursor).toBe(BATCH_MAX);
       if (second.ok) {
-        expect(second.data.resumed?.map((a) => a.target)).toEqual([
-          "fix(mobile): checked items reset after reconnect",
+        expect(second.data.resumed?.map((a) => [a.index, a.url])).toEqual([
+          [3, "https://github.com/dtun/cafe-listo/issues/102"],
         ]);
         // The fresh run after the resume found nothing past the new cursor.
         expect(second.data.status).toBe("nothing_new");

@@ -47,7 +47,10 @@ export interface PlanContext {
   policy: TriagePolicy;
 }
 
+/** Safe to log: messages never quote plan or feedback text. */
 export interface Problem {
   rule: string;
   message: string;
+  /** Index of the offending action, when there is one. */
+  action?: number;
 }

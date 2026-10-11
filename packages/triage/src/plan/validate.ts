@@ -60,41 +60,61 @@ const ISSUE_REF = /(?<![A-Za-z0-9_/&#])#([0-9]+)/g;
 
 const isBlank = (text: string | undefined) => !text || text.trim() === "";
 
-function actionName(action: TriageAction): string {
-  return action.type === "create_issue"
-    ? (action.title ?? "")
-    : `comment #${action.issue_number}`;
+/**
+ * Problems end up in logs, so they name actions by index and type and fields
+ * by name. They never quote plan or feedback text: the title, the matched
+ * PII, labels, or ids the model wrote.
+ */
+function at(index: number, action: TriageAction): string {
+  return `action ${index} (${action.type})`;
 }
 
-function problem(rule: string, message: string): Problem {
-  return { rule, message };
+function problem(rule: string, message: string, action?: number): Problem {
+  return action === undefined ? { rule, message } : { rule, message, action };
 }
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 function coverage(plan: TriagePlan, ctx: PlanContext): Problem[] {
-  const referenced = new Set(plan.actions.flatMap((a) => a.feedback_ids));
   const known = new Set(ctx.feedbackIds);
+  const referenced = new Set(plan.actions.flatMap((a) => a.feedback_ids));
   const unaccounted = ctx.feedbackIds.filter((id) => !referenced.has(id));
-  const unknown = [...referenced].filter((id) => !known.has(id));
-  return [
-    ...(unaccounted.length
-      ? [problem("coverage", `unaccounted feedback: ${unaccounted.join(",")}`)]
-      : []),
-    ...(unknown.length
-      ? [problem("coverage", `unknown feedback ids: ${unknown.join(",")}`)]
-      : []),
-  ];
+  const out: Problem[] = [];
+  if (unaccounted.length) {
+    out.push(
+      problem(
+        "coverage",
+        `${plural(unaccounted.length, "feedback id")} of ${ctx.feedbackIds.length} in no action`,
+      ),
+    );
+  }
+  plan.actions.forEach((action, i) => {
+    const unknown = action.feedback_ids.filter((id) => !known.has(id));
+    if (unknown.length) {
+      out.push(
+        problem(
+          "coverage",
+          `${at(i, action)}: ${plural(unknown.length, "unknown feedback id")}`,
+          i,
+        ),
+      );
+    }
+  });
+  return out;
 }
 
 function caps(plan: TriagePlan, policy: TriagePolicy): Problem[] {
   const out: Problem[] = [];
-  const acting = plan.actions.filter((a) => a.type !== "skip").length;
-  const creates = plan.actions.filter((a) => a.type === "create_issue").length;
-  const comments = plan.actions.filter(
-    (a) => a.type === "comment_issue",
-  ).length;
-  if (acting > policy.maxActions) {
+  const count = (type: TriageAction["type"]) =>
+    plan.actions.filter((a) => a.type === type).length;
+  const creates = count("create_issue");
+  const comments = count("comment_issue");
+  if (creates + comments > policy.maxActions) {
     out.push(
-      problem("cap", `too many actions: ${acting} > ${policy.maxActions}`),
+      problem(
+        "cap",
+        `too many actions: ${creates + comments} > ${policy.maxActions}`,
+      ),
     );
   }
   if (creates > policy.maxActions) {
@@ -118,46 +138,68 @@ function titleOk(title: string | undefined, policy: TriagePolicy): boolean {
   return scope === undefined || policy.scopes.includes(scope);
 }
 
-function createRules(action: TriageAction, policy: TriagePolicy): Problem[] {
+function createRules(
+  action: TriageAction,
+  i: number,
+  policy: TriagePolicy,
+): Problem[] {
   const out: Problem[] = [];
-  const title = action.title ?? "";
+  const where = at(i, action);
   const labels = action.labels ?? [];
   if (!titleOk(action.title, policy)) {
-    out.push(problem("title", `bad title: ${title}`));
+    out.push(
+      problem(
+        "title",
+        `${where}: title is not a one-line feat|fix|docs(<scope>) title with a known scope`,
+        i,
+      ),
+    );
   }
   if (isBlank(action.body)) {
-    out.push(problem("body", `empty body: ${title}`));
+    out.push(problem("body", `${where}: empty body`, i));
   }
   if (!policy.requiredLabels.every((label) => labels.includes(label))) {
-    out.push(problem("labels", `missing required labels: ${title}`));
+    out.push(problem("labels", `${where}: missing required labels`, i));
   }
-  const disallowed = labels.filter(
+  for (const label of FORBIDDEN_LABELS.filter((l) => labels.includes(l))) {
+    out.push(problem("labels", `${where}: forbidden label ${label}`, i));
+  }
+  const outside = labels.filter(
     (label) =>
-      !policy.allowedLabels.includes(label) || FORBIDDEN_LABELS.includes(label),
+      !policy.allowedLabels.includes(label) &&
+      !FORBIDDEN_LABELS.includes(label),
   );
-  if (disallowed.length) {
+  if (outside.length) {
     out.push(
       problem(
         "labels",
-        `disallowed labels ${disallowed.join(",")} on: ${title}`,
+        `${where}: ${plural(outside.length, "label")} outside the allowlist`,
+        i,
       ),
     );
   }
   return out;
 }
 
-function commentRules(action: TriageAction, ctx: PlanContext): Problem[] {
+function commentRules(
+  action: TriageAction,
+  i: number,
+  ctx: PlanContext,
+): Problem[] {
+  const where = at(i, action);
   const n = action.issue_number;
   if (n === undefined) {
-    return [problem("comment", "comment without issue_number")];
+    return [problem("comment", `${where}: no issue_number`, i)];
   }
   const out: Problem[] = [];
   if (isBlank(action.body)) {
-    out.push(problem("body", `empty comment on #${n}`));
+    out.push(problem("body", `${where}: empty body`, i));
   }
   const target = ctx.issues.find((issue) => issue.number === n);
   if (!target) {
-    out.push(problem("comment", `comment targets unknown issue #${n}`));
+    out.push(
+      problem("comment", `${where}: targets #${n}, which was not shown`, i),
+    );
   } else if (
     !ctx.policy.trustedAuthors.includes(target.author) &&
     !target.labels.includes("feedback")
@@ -165,7 +207,8 @@ function commentRules(action: TriageAction, ctx: PlanContext): Problem[] {
     out.push(
       problem(
         "comment",
-        `comment target #${n} not opened by a trusted author or labelled feedback`,
+        `${where}: targets #${n}, not opened by a trusted author or labelled feedback`,
+        i,
       ),
     );
   }
@@ -181,37 +224,68 @@ function oneCommentPerIssue(plan: TriagePlan): Problem[] {
   }
   return [...seen]
     .filter(([, count]) => count > 1)
-    .map(([n]) => problem("comment", `multiple comments on #${n}`));
+    .map(([n, count]) => problem("comment", `${count} comments on #${n}`));
 }
 
-/** Rules for everything that becomes public text: titles and bodies. */
-function textRules(action: TriageAction, ctx: PlanContext): Problem[] {
-  const name = actionName(action);
-  const text = `${action.title ?? ""}\n${action.body ?? ""}`;
+function piiKinds(text: string): string[] {
+  return [
+    ...(EMAIL.test(text) ? ["email"] : []),
+    ...(UUID.test(text) ? ["UUID"] : []),
+    ...(PHONE.test(text) ? ["phone number"] : []),
+  ];
+}
+
+/** PII and links: checked on every field that leaves the process, public or logged. */
+function leakRules(
+  where: string,
+  field: string,
+  text: string | undefined,
+  action?: number,
+): Problem[] {
+  if (!text) return [];
+  return [
+    ...piiKinds(text).map((kind) =>
+      problem("pii", `${where}: possible ${kind} in ${field}`, action),
+    ),
+    ...(LINKS.some((re) => re.test(text))
+      ? [problem("link", `${where}: link in ${field}`, action)]
+      : []),
+  ];
+}
+
+/** Rules for the public text of an action: its title and body. */
+function publicTextRules(
+  action: TriageAction,
+  i: number,
+  ctx: PlanContext,
+): Problem[] {
+  const where = at(i, action);
   const out: Problem[] = [];
-  if (EMAIL.test(text) || UUID.test(text) || PHONE.test(text)) {
-    out.push(problem("pii", `possible personal info in: ${name}`));
-  }
-  if (MENTION.test(text)) {
-    out.push(problem("mention", `@-mention in: ${name}`));
-  }
-  if (CROSS_REPO.test(text)) {
-    out.push(problem("reference", `cross-repo reference in: ${name}`));
-  }
-  if (LINKS.some((re) => re.test(text))) {
-    out.push(problem("link", `link in: ${name}`));
-  }
   const known = new Set(ctx.issues.map((issue) => issue.number));
-  const unknown = [
-    ...new Set([...text.matchAll(ISSUE_REF)].map((m) => Number(m[1]))),
-  ].filter((n) => !known.has(n));
-  if (unknown.length) {
-    out.push(
-      problem(
-        "reference",
-        `unknown issue reference ${unknown.map((n) => `#${n}`).join(",")} in: ${name}`,
-      ),
-    );
+  for (const field of ["title", "body"] as const) {
+    const text = action[field];
+    if (!text) continue;
+    out.push(...leakRules(where, field, text, i));
+    if (MENTION.test(text)) {
+      out.push(problem("mention", `${where}: @-mention in ${field}`, i));
+    }
+    if (CROSS_REPO.test(text)) {
+      out.push(
+        problem("reference", `${where}: cross-repo reference in ${field}`, i),
+      );
+    }
+    const unknown = [
+      ...new Set([...text.matchAll(ISSUE_REF)].map((m) => Number(m[1]))),
+    ].filter((n) => !known.has(n));
+    if (unknown.length) {
+      out.push(
+        problem(
+          "reference",
+          `${where}: ${field} references ${unknown.map((n) => `#${n}`).join(",")}, not shown`,
+          i,
+        ),
+      );
+    }
   }
   return out;
 }
@@ -222,18 +296,21 @@ function textRules(action: TriageAction, ctx: PlanContext): Problem[] {
  * policy allows.
  */
 export function validatePlan(plan: TriagePlan, ctx: PlanContext): Problem[] {
+  const each = (
+    fn: (action: TriageAction, i: number) => Problem[],
+  ): Problem[] => plan.actions.flatMap((action, i) => fn(action, i));
   return [
     ...coverage(plan, ctx),
     ...caps(plan, ctx.policy),
-    ...plan.actions.flatMap((action) =>
-      action.type === "create_issue" ? createRules(action, ctx.policy) : [],
+    ...each((a, i) =>
+      a.type === "create_issue" ? createRules(a, i, ctx.policy) : [],
     ),
-    ...plan.actions.flatMap((action) =>
-      action.type === "comment_issue" ? commentRules(action, ctx) : [],
+    ...each((a, i) =>
+      a.type === "comment_issue" ? commentRules(a, i, ctx) : [],
     ),
     ...oneCommentPerIssue(plan),
-    ...plan.actions.flatMap((action) =>
-      action.type === "skip" ? [] : textRules(action, ctx),
-    ),
+    ...each((a, i) => (a.type === "skip" ? [] : publicTextRules(a, i, ctx))),
+    ...each((a, i) => leakRules(at(i, a), "reason", a.reason, i)),
+    ...leakRules("plan", "summary", plan.summary),
   ];
 }

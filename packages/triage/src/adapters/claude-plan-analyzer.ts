@@ -82,7 +82,7 @@ export class ClaudePlanAnalyzer implements PlanAnalyzer {
 
     let result: {
       is_error?: boolean;
-      result?: unknown;
+      subtype?: unknown;
       structured_output?: unknown;
     };
     try {
@@ -90,8 +90,14 @@ export class ClaudePlanAnalyzer implements PlanAnalyzer {
     } catch {
       throw new Error("claude returned output that is not JSON");
     }
+    // `result` text may echo feedback, so only the subtype goes into the error.
     if (result.is_error) {
-      throw new Error(`claude reported an error: ${String(result.result)}`);
+      const subtype =
+        typeof result.subtype === "string" &&
+        /^[a-z_]{1,40}$/.test(result.subtype)
+          ? result.subtype
+          : "unknown";
+      throw new Error(`claude reported an error (${subtype})`);
     }
     if (result.structured_output === undefined) {
       throw new Error("claude returned no structured_output");

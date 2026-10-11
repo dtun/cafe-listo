@@ -23,27 +23,29 @@ import {
   type UseCaseResult,
 } from "./types";
 
+/**
+ * The report is safe to log by construction: counts, indexes, action types,
+ * issue numbers and URLs only. No titles, bodies, reasons, summaries or
+ * feedback ids; those live in the ledger and on GitHub.
+ */
 export interface ActionOutcome {
   index: number;
   type: "create_issue" | "comment_issue";
-  /** The issue title, or `#N` for a comment. */
-  target: string;
-  feedbackIds: string[];
-  reason: string;
+  /** The commented issue; absent for creates. */
+  issueNumber?: number;
+  feedbackCount: number;
   /** null in a dry run. */
   url: string | null;
 }
 
 export interface SkipOutcome {
   index: number;
-  feedbackIds: string[];
-  reason: string;
+  feedbackCount: number;
 }
 
 export interface TriageReport {
   dryRun: boolean;
   status: "triaged" | "nothing_new" | "pending_plan";
-  summary: string | null;
   feedbackCount: number;
   actions: ActionOutcome[];
   skips: SkipOutcome[];
@@ -114,12 +116,10 @@ function outcome(
   return {
     index,
     type: action.type as ActionOutcome["type"],
-    target:
-      action.type === "create_issue"
-        ? (action.title ?? "")
-        : `#${action.issue_number}`,
-    feedbackIds: action.feedback_ids,
-    reason: action.reason,
+    ...(action.type === "comment_issue" && {
+      issueNumber: action.issue_number,
+    }),
+    feedbackCount: action.feedback_ids.length,
     url,
   };
 }
@@ -127,7 +127,7 @@ function outcome(
 function skips(actions: TriageAction[]): SkipOutcome[] {
   return actions.flatMap((action, index) =>
     action.type === "skip"
-      ? [{ index, feedbackIds: action.feedback_ids, reason: action.reason }]
+      ? [{ index, feedbackCount: action.feedback_ids.length }]
       : [],
   );
 }
@@ -191,7 +191,6 @@ export class TriageFeedback {
       return ok({
         dryRun,
         status: "nothing_new",
-        summary: null,
         feedbackCount: 0,
         actions: [],
         skips: [],
@@ -249,7 +248,6 @@ export class TriageFeedback {
     return ok({
       dryRun,
       status: "triaged",
-      summary: plan.summary,
       feedbackCount: rows.length,
       actions,
       skips: skips(plan.actions),
@@ -323,7 +321,7 @@ export class TriageFeedback {
       } catch (error) {
         throw new Stop(
           "action_failed",
-          `${outcome(action, index, null).target} failed (${done.size}/${total} actions done; next run resumes): ${errorText(error)}`,
+          `action ${index} (${action.type}) failed (${done.size}/${total} actions done; next run resumes): ${errorText(error)}`,
         );
       }
       await attempt("recording a finished action", () =>
@@ -343,7 +341,6 @@ export class TriageFeedback {
     return {
       dryRun: true,
       status: "pending_plan",
-      summary: pending.plan.summary,
       feedbackCount: pending.context.feedbackIds.length,
       actions: [],
       skips: [],

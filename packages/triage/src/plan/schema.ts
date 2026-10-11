@@ -35,15 +35,38 @@ export type ParsedPlan =
   | { ok: true; plan: TriagePlan }
   | { ok: false; problems: Problem[] };
 
-/** Parses raw analyzer output. Anything off-schema is a Problem, never a throw. */
+const KNOWN_KEYS = new Set([
+  "summary",
+  "actions",
+  "type",
+  "feedback_ids",
+  "reason",
+  "title",
+  "body",
+  "labels",
+  "issue_number",
+]);
+
+/**
+ * Parses raw analyzer output. Anything off-schema is a Problem, never a throw.
+ * Problems carry only the issue code and a path of known keys and indexes,
+ * never a value or key the model wrote.
+ */
 export function parsePlan(raw: unknown): ParsedPlan {
   const result = TriagePlanSchema.safeParse(raw);
   if (result.success) return { ok: true, plan: result.data };
   return {
     ok: false,
-    problems: result.error.issues.map((issue) => ({
-      rule: "schema",
-      message: `schema: ${issue.path.join(".") || "(root)"}: ${issue.message}`,
-    })),
+    problems: result.error.issues.map((issue) => {
+      const path = issue.path
+        .map((seg) =>
+          typeof seg === "number" || KNOWN_KEYS.has(String(seg)) ? seg : "?",
+        )
+        .join(".");
+      return {
+        rule: "schema",
+        message: `schema: ${path || "(root)"}: ${issue.code}`,
+      };
+    }),
   };
 }

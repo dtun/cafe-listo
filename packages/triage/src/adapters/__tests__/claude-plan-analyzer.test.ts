@@ -55,8 +55,12 @@ describe("ClaudePlanAnalyzer", () => {
     ["not JSON", "oops", /not JSON/],
     [
       "an error result",
-      JSON.stringify({ is_error: true, result: "rate limited" }),
-      /rate limited/,
+      JSON.stringify({
+        is_error: true,
+        subtype: "error_during_execution",
+        result: "Jane at jane@example.com says",
+      }),
+      /^claude reported an error \(error_during_execution\)$/,
     ],
     [
       "no structured output",

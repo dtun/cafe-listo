@@ -5,7 +5,7 @@
 import { mkdirSync, realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { cliContainer, loadConfig, type CliRuntime } from "./container";
-import type { TriageReport } from "./usecases/triage-feedback";
+import type { ActionOutcome, TriageReport } from "./usecases/triage-feedback";
 import type { TriageError } from "./usecases/types";
 
 const USAGE = "usage: triage run [--dry-run]";
@@ -17,6 +17,19 @@ export interface CliIo extends CliRuntime {
   home?: string;
 }
 
+function describe(a: ActionOutcome): string {
+  const what =
+    a.type === "create_issue"
+      ? "create_issue"
+      : `comment_issue #${a.issueNumber}`;
+  return `- action ${a.index} (${what}, ${a.feedbackCount} feedback): ${a.url ?? "(dry run)"}`;
+}
+
+/**
+ * Goes to stdout and launchd.log, so it holds only counts, indexes, action
+ * types, issue numbers and URLs. The plan's text stays in the ledger and on
+ * GitHub.
+ */
 export function formatReport(report: TriageReport): string {
   const lines = [
     `# Feedback triage${report.dryRun ? " (dry run)" : ""}`,
@@ -24,7 +37,7 @@ export function formatReport(report: TriageReport): string {
   ];
   if (report.resumed) {
     lines.push("", `## Resumed pending plan (${report.resumed.length} filed)`);
-    for (const a of report.resumed) lines.push(`- ${a.target}: ${a.url}`);
+    lines.push(...report.resumed.map(describe));
   }
   if (report.status === "pending_plan") {
     lines.push(
@@ -37,28 +50,25 @@ export function formatReport(report: TriageReport): string {
     lines.push("", "No new feedback.");
     return lines.join("\n");
   }
+  const creates = report.actions.filter((a) => a.type === "create_issue");
   lines.push(
     "",
-    `${report.feedbackCount} feedback item(s).`,
+    `${report.feedbackCount} feedback item(s): ${creates.length} issue(s), ${report.actions.length - creates.length} comment(s), ${report.skips.length} skip(s).`,
     "",
-    report.summary ?? "",
+    "## Actions",
+    ...report.actions.map(describe),
   );
-  lines.push("", "## Actions");
-  for (const a of report.actions) {
-    const verb = a.type === "create_issue" ? "Create" : "Comment on";
-    lines.push(
-      `- ${verb} ${a.target}: ${a.url ?? "(dry run)"} [${a.feedbackIds.join(", ")}] ${a.reason}`,
-    );
-  }
   if (report.skips.length) {
-    lines.push("", "## Skipped");
-    for (const s of report.skips) {
-      lines.push(`- ${s.feedbackIds.join(", ")}: ${s.reason}`);
-    }
+    lines.push(
+      "",
+      "## Skipped",
+      ...report.skips.map(
+        (s) => `- action ${s.index} (skip, ${s.feedbackCount} feedback)`,
+      ),
+    );
   }
   return lines.join("\n");
 }
-
 function formatError(error: TriageError): string {
   return [
     `triage failed (${error.code}): ${error.message}`,
