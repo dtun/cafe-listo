@@ -119,3 +119,6 @@ export {
   resolveKit,
   toPackItems,
 } from "./catalog/resolve-kit";
+export type { HouseholdPatch } from "./household/patch";
+export { applyHouseholdPatch, isEmptyHouseholdPatch } from "./household/patch";
+export type { HouseholdProfile, ProfileRepository } from "./profile/ports";

@@ -26,6 +26,7 @@ describe("row level security", () => {
       expect.arrayContaining([
         "checklist_entries",
         "feedback",
+        "household_profiles",
         "oauth_clients",
         "oauth_codes",
       ]),
@@ -76,6 +77,53 @@ describe("row level security", () => {
         ),
       ].map((m) => [m[1].trim().toLowerCase(), m[2].trim().toLowerCase()]);
       expect(grants).toEqual([["insert", "authenticated"]]);
+    });
+  });
+
+  describe("household_profiles", () => {
+    const policies = [
+      ...sql.matchAll(
+        /create policy[^;]*?on public\.household_profiles\b([^;]*);/gi,
+      ),
+    ].map((m) => m[1].replace(/\s+/g, " "));
+    const ownRow = String.raw`\(\s*\(?\s*(?:select\s+)?auth\.uid\(\)\s*\)?\s*=\s*user_id\s*\)`;
+    const initPlanOwnRow = String.raw`\(\s*\(\s*select\s+auth\.uid\(\)\s*\)\s*=\s*user_id\s*\)`;
+
+    it("has one own-rows policy for authenticated, using (select auth.uid())", () => {
+      expect(policies).toHaveLength(1);
+      expect(policies[0]).toMatch(/for all to authenticated/i);
+      expect(policies[0]).toMatch(new RegExp(`using\\s*${ownRow}`, "i"));
+      expect(policies[0]).toMatch(new RegExp(`with check\\s*${ownRow}`, "i"));
+      // The subselect form is evaluated once per statement, not per row.
+      expect(policies[0]).toMatch(
+        new RegExp(`using\\s*${initPlanOwnRow}`, "i"),
+      );
+    });
+
+    it("grants authenticated row access and anon nothing", () => {
+      expect(sql).toMatch(
+        /revoke all on public\.household_profiles from anon, authenticated;/i,
+      );
+      const grants = [
+        ...sql.matchAll(
+          /grant ([a-z, ]+) on public\.household_profiles to ([a-z, ]+);/gi,
+        ),
+      ].map((m) => [m[1].trim().toLowerCase(), m[2].trim().toLowerCase()]);
+      expect(grants).toEqual([
+        ["select, insert, update, delete", "authenticated"],
+      ]);
+    });
+
+    it("stores location at state and five-digit ZIP granularity only", () => {
+      const table =
+        /create table (?:if not exists )?public\.household_profiles \(([\s\S]*?)\n\);/i.exec(
+          sql,
+        )?.[1] ?? "";
+      expect(table).toMatch(
+        /state text not null check \(state ~ '\^\[A-Z\]\{2\}\$'\)/,
+      );
+      expect(table).toMatch(/zip text check \(zip ~ '\^\[0-9\]\{5\}\$'\)/);
+      expect(table).not.toMatch(/address|street|lat|lng|longitude/i);
     });
   });
 });

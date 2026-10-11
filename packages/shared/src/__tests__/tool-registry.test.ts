@@ -37,9 +37,11 @@ describe("toolRegistry", () => {
   it("exposes the v1 tool set", () => {
     expect(toolRegistry.map((t) => t.name).sort()).toEqual([
       "get_checklist",
+      "get_household",
       "list_categories",
       "list_items",
       "reset_checklist",
+      "set_household",
       "set_item_done",
       "submit_feedback",
     ]);
@@ -59,6 +61,19 @@ describe("toolRegistry", () => {
     expect(toolMutates.reset_checklist).toBe(true);
     expect(toolMutates.get_checklist).toBe(false);
     expect(toolMutates.submit_feedback).toBe(true);
+    expect(toolMutates.get_household).toBe(false);
+    expect(toolMutates.set_household).toBe(true);
+  });
+
+  it("tells the model to ask for missing household details rather than guess", () => {
+    for (const name of ["get_household", "set_household"]) {
+      const tool = toolRegistry.find((t) => t.name === name);
+      expect(tool?.description).toMatch(/ask the user/i);
+    }
+    const set = toolRegistry.find((t) => t.name === "set_household");
+    expect(set?.description).toMatch(/rather than guessing/i);
+    expect(set?.description).toMatch(/never send or store a street address/i);
+    expect(mcpServerInstructions).toMatch(/rather than guessing/i);
   });
 
   it("tells the model to get explicit consent before submitting feedback", () => {
@@ -114,6 +129,7 @@ describe("toolSchemas", () => {
     expect(toolSchemas.list_categories.safeParse({}).success).toBe(true);
     expect(toolSchemas.get_checklist.safeParse({}).success).toBe(true);
     expect(toolSchemas.reset_checklist.safeParse({}).success).toBe(true);
+    expect(toolSchemas.get_household.safeParse({}).success).toBe(true);
   });
 
   it("accepts list_items filters and rejects an unknown category", () => {
@@ -211,6 +227,54 @@ describe("submit_feedback schema", () => {
   });
 });
 
+describe("set_household schema", () => {
+  const schema = toolSchemas.set_household;
+
+  it("accepts partial updates with no required fields", () => {
+    expect(schema.parse({})).toEqual({});
+    expect(schema.parse({ pets: { cats: 1 } })).toEqual({ pets: { cats: 1 } });
+    expect(
+      schema.safeParse({
+        state: "az",
+        adults: 2,
+        children: { count: 2, bands: { toddler: 1, teen: 1 } },
+        infants: 1,
+        medical: { needs: ["insulin"], flags: ["prescription_meds"] },
+        dietary: ["gluten_free"],
+        days: 7,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("accepts a five-digit ZIP or ZIP+4 and rejects anything else", () => {
+    expect(schema.safeParse({ zip: "85201" }).success).toBe(true);
+    expect(schema.safeParse({ zip: "85201-1234" }).success).toBe(true);
+    expect(schema.safeParse({ zip: "8520" }).success).toBe(false);
+    expect(schema.safeParse({ zip: "123 Main St" }).success).toBe(false);
+  });
+
+  it("accepts two-letter state codes only", () => {
+    expect(schema.safeParse({ state: "AZ" }).success).toBe(true);
+    expect(schema.safeParse({ state: "Arizona" }).success).toBe(false);
+  });
+
+  it("rejects bad household values", () => {
+    expect(schema.safeParse({ adults: -1 }).success).toBe(false);
+    expect(schema.safeParse({ days: 30 }).success).toBe(false);
+    expect(schema.safeParse({ dietary: ["paleo"] }).success).toBe(false);
+  });
+
+  it("does not accept an address or a user_id from the caller", () => {
+    const parsed = schema.safeParse({
+      state: "AZ",
+      address: "1 Main St",
+      user_id: "bob",
+    });
+
+    expect(parsed.success && Object.keys(parsed.data)).toEqual(["state"]);
+  });
+});
+
 describe("isToolName", () => {
   it("narrows known names only", () => {
     expect(isToolName("list_items")).toBe(true);
@@ -281,6 +345,39 @@ describe("buildMcpToolList", () => {
       idempotentHint: false,
     });
     expect(tool?.inputSchema.required).toEqual(["kind", "summary"]);
+  });
+
+  it("annotates get_household as read-only", () => {
+    const tool = buildMcpToolList().find((t) => t.name === "get_household");
+
+    expect(tool?.annotations).toEqual({
+      title: "Get household profile",
+      readOnlyHint: true,
+    });
+  });
+
+  it("annotates set_household as an idempotent, non-destructive write", () => {
+    const tool = buildMcpToolList().find((t) => t.name === "set_household");
+
+    expect(tool?.annotations).toEqual({
+      title: "Save household profile",
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+    });
+    expect(tool?.inputSchema.required).toBeUndefined();
+    expect(Object.keys(tool?.inputSchema.properties ?? {}).sort()).toEqual([
+      "adults",
+      "children",
+      "days",
+      "dietary",
+      "infants",
+      "medical",
+      "pets",
+      "seniors",
+      "state",
+      "zip",
+    ]);
   });
 
   it("derives readOnlyHint from toolMutates", () => {
