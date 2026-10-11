@@ -5,7 +5,7 @@
 - **Transport:** Streamable HTTP at `POST /mcp`. It is stateless and returns JSON responses. `GET` and `DELETE /mcp` return `405` with `Allow: POST`, because there is no standalone SSE stream and there are no sessions.
 - **Auth:** OAuth 2.1. Clients register themselves dynamically and use PKCE (S256). Users sign in with Supabase Auth, and the access token a client receives is the user's Supabase JWT.
 - **Storage:** Supabase Postgres.
-  - `checklist_entries` is protected by RLS. The server forwards the caller's JWT, so Postgres decides which rows they can see.
+  - `checklist_entries` is protected by RLS. The server forwards the caller's JWT, so Postgres decides which rows they can see. Each row holds an item's `status` (`needed`, `bought` or `packed`), `quantity`, `packed_at` and `expires_on`; see [Tote progress](#tote-progress).
   - `household_profiles` holds one row per user: FEMA region, state, optional five-digit ZIP, and the household as jsonb. RLS limits users to their own row. Location is never finer than a ZIP.
   - `feedback` is write-only for users: RLS lets them insert their own rows and nothing else. Read it with the service role or the Supabase dashboard.
   - `oauth_clients` and `oauth_codes` are reachable only with the service role.
@@ -13,18 +13,45 @@
 
 ## Tools
 
-| Tool              | Mutates | Purpose                                                       |
-| ----------------- | ------- | ------------------------------------------------------------- |
-| `list_categories` | no      | Category ids, labels, emoji                                   |
-| `list_items`      | no      | Catalog items, filterable by category or essential only       |
-| `get_checklist`   | no      | The user's done state plus overall and per-category progress  |
-| `set_item_done`   | yes     | Mark one item packed or not packed (idempotent)               |
-| `reset_checklist` | yes     | Clear the user's checklist                                    |
-| `submit_feedback` | yes     | Send a gap, bug, content error, or idea (after user consent)  |
-| `get_household`   | no      | The user's location (state, ZIP, FEMA region) and household   |
-| `set_household`   | yes     | Partially update the household; derives region from state/ZIP |
+| Tool              | Mutates | Purpose                                                         |
+| ----------------- | ------- | --------------------------------------------------------------- |
+| `list_categories` | no      | Category ids, labels, emoji                                     |
+| `list_items`      | no      | Catalog items, filterable by category or essential only         |
+| `get_checklist`   | no      | The user's done state plus overall and per-category progress    |
+| `set_item_done`   | yes     | Mark one item packed or not packed (idempotent)                 |
+| `reset_checklist` | yes     | Clear the user's checklist                                      |
+| `submit_feedback` | yes     | Send a gap, bug, content error, or idea (after user consent)    |
+| `get_household`   | no      | The user's location (state, ZIP, FEMA region) and household     |
+| `set_household`   | yes     | Partially update the household; derives region from state/ZIP   |
+| `get_tote`        | no      | Kit for the saved household with status, readiness, fit, expiry |
+| `update_items`    | yes     | Batch status, quantity and label expiry updates                 |
 
-Tool definitions live in `packages/shared/src/mcp/tool-registry.ts`. `tools/list` sends each tool's `title` and MCP `annotations`: read-only tools get `readOnlyHint: true`, `set_item_done` is idempotent, `reset_checklist` is idempotent and destructive, `set_household` is idempotent and not destructive, and `submit_feedback` is neither. `set_household` takes a state or a ZIP, derives the FEMA region, rejects an unknown or mismatched location with a hint to ask the user, and validates the merged household with the shared zod schema. The `initialize` result includes `instructions` telling the assistant when to offer feedback. Each submission logs `feedback_submitted` with its id and kind, never the text.
+Tool definitions live in `packages/shared/src/mcp/tool-registry.ts`. `tools/list` sends each tool's `title` and MCP `annotations`: read-only tools (including `get_tote`) get `readOnlyHint: true`, `set_item_done` is idempotent, `reset_checklist` is idempotent and destructive, `set_household` and `update_items` are idempotent and not destructive, and `submit_feedback` is neither. Every tool has `openWorldHint: false`, since each one touches only Cafe Listo's own data. `set_household` takes a state or a ZIP, derives the FEMA region, rejects an unknown or mismatched location with a hint to ask the user, and validates the merged household with the shared zod schema. The `initialize` result includes `instructions` telling the assistant when to offer feedback. Each submission logs `feedback_submitted` with its id and kind, never the text.
+
+## Tote progress
+
+`get_tote` and `update_items` track the kit to 100%. The kit is `resolveKit` for the saved household profile, so `get_tote` returns an error telling the assistant to call `set_household` first when there is no profile.
+
+**Status.** Each item moves `needed → bought → packed`; an item with no row is `needed`. `quantity` is how many purchase units the user has, and null means "not recorded". `packed_at` is set when an item moves to packed, kept while it stays packed, and cleared when it leaves, so repeating an update changes nothing. Moving an item back to `needed` clears its quantity unless one is sent. `update_items` writes a whole batch in one upsert and rejects the batch if any id is unknown or repeated. `set_item_done` is a shim: `done: true` means packed and `done: false` means needed.
+
+**Readiness** is a whole number from 0 to 100, computed over every item in the resolved kit:
+
+```
+readiness = floor(100 × Σ wᵢ·pᵢ / Σ wᵢ)
+wᵢ = 2 if the item is essential, else 1
+pᵢ = 0                         unless the item is packed
+pᵢ = min(1, quantityᵢ / unitsᵢ) when packed (a null quantity counts as unitsᵢ, so pᵢ = 1)
+```
+
+Bought items score 0, because only the tote counts as ready. The result is rounded down, so 100 means every item is fully packed. An empty kit scores 0. The code is `readinessPercent` in `packages/shared/src/tote/progress.ts`.
+
+**Fit** is planned. `packTote` runs over the whole kit at its full `units` into the HDX 27 gal tote, whatever is packed so far. `planned_fill_percent` is how full the tote will be once everything is in, and `overflow` is what has to live beside it: items that are not packable, such as bulk water, and anything that runs out of room. Packed items are already in the tote and can't overflow, and readiness already measures progress, so fit answers the other question: will the whole kit fit?
+
+**Expiring** lists bought or packed items that expire within 60 days or have already expired, soonest first. The date is `expires_on` from the label when the user gave it. Otherwise it is `packed_at` plus the item's `shelfLifeMonths`, clamped to the end of a short month, and marked `estimated: true`.
+
+**Hazards** has one entry for each of the region's hazards. A hazard with kit items (`via: "items"`) is covered when all of those items are fully packed, and `missing` lists the rest. A hazard with no hazard-specific items (`via: "essentials"`) relies on the base kit, so it is covered when every essential base item is fully packed.
+
+**The `done` column** stays, kept equal to `status = 'packed'` by a trigger, with a check constraint holding that invariant. Migrations only move forward, and dropping a column loses data for good. Migrations are also applied by hand before the deploy, so for a while the old server still writes `done` alone. The trigger turns those writes into a status, so the old and new servers can't disagree. The migration backfills `done = true` rows to `packed`, with `packed_at` set from `updated_at`. A later migration can drop `done` once nothing writes it.
 
 ## Connect a client
 
