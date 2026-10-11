@@ -26,7 +26,10 @@ describe("buildContainer", () => {
     expect(await repo.getEntries("u1")).toEqual([
       {
         itemId: "water-1",
-        done: true,
+        status: "packed",
+        quantity: null,
+        packedAt: new Date("2026-05-05T00:00:00.000Z"),
+        expiresOn: null,
         updatedAt: new Date("2026-05-05T00:00:00.000Z"),
       },
     ]);

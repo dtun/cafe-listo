@@ -12,7 +12,18 @@ describe("SupabaseChecklistRepository", () => {
         data: [
           {
             item_id: "water-1",
-            done: true,
+            status: "packed",
+            quantity: 2,
+            packed_at: "2025-12-31T00:00:00+00:00",
+            expires_on: "2027-06-30",
+            updated_at: "2026-01-01T00:00:00+00:00",
+          },
+          {
+            item_id: "food-1",
+            status: "needed",
+            quantity: null,
+            packed_at: null,
+            expires_on: null,
             updated_at: "2026-01-01T00:00:00+00:00",
           },
         ],
@@ -25,20 +36,45 @@ describe("SupabaseChecklistRepository", () => {
       expect(entries).toEqual([
         {
           itemId: "water-1",
-          done: true,
+          status: "packed",
+          quantity: 2,
+          packedAt: new Date("2025-12-31T00:00:00Z"),
+          expiresOn: "2027-06-30",
+          updatedAt: new Date("2026-01-01T00:00:00Z"),
+        },
+        {
+          itemId: "food-1",
+          status: "needed",
+          quantity: null,
+          packedAt: null,
+          expiresOn: null,
           updatedAt: new Date("2026-01-01T00:00:00Z"),
         },
       ]);
       expect(calls).toEqual([
         { method: "from", args: ["checklist_entries"] },
-        { method: "select", args: ["item_id, done, updated_at"] },
+        {
+          method: "select",
+          args: [
+            "item_id, status, quantity, packed_at, expires_on, updated_at",
+          ],
+        },
         { method: "eq", args: ["user_id", USER] },
       ]);
     });
 
     it("rejects rows that do not match the schema", async () => {
       const { client } = createFakeSupabase({
-        data: [{ item_id: "water-1", done: "yes", updated_at: "x" }],
+        data: [
+          {
+            item_id: "water-1",
+            status: "lost",
+            quantity: null,
+            packed_at: null,
+            expires_on: null,
+            updated_at: "2026-01-01T00:00:00+00:00",
+          },
+        ],
       });
 
       await expect(
@@ -60,32 +96,69 @@ describe("SupabaseChecklistRepository", () => {
     });
   });
 
-  describe("setDone", () => {
-    it("upserts one row keyed on user and item", async () => {
+  describe("saveEntries", () => {
+    const entry = {
+      itemId: "water-1",
+      status: "packed" as const,
+      quantity: 3,
+      packedAt: new Date("2026-01-01T00:00:00Z"),
+      expiresOn: "2027-01-01",
+      updatedAt: new Date("2026-01-02T00:00:00Z"),
+    };
+
+    it("upserts every entry in one call, keyed on user and item, with done in sync", async () => {
       const { client, calls } = createFakeSupabase();
 
-      await new SupabaseChecklistRepository(client).setDone(
-        USER,
-        "water-1",
-        true,
-        new Date("2026-01-01T00:00:00Z"),
-      );
+      await new SupabaseChecklistRepository(client).saveEntries(USER, [
+        entry,
+        {
+          ...entry,
+          itemId: "food-1",
+          status: "bought",
+          packedAt: null,
+          expiresOn: null,
+        },
+      ]);
 
       expect(calls).toEqual([
         { method: "from", args: ["checklist_entries"] },
         {
           method: "upsert",
           args: [
-            {
-              user_id: USER,
-              item_id: "water-1",
-              done: true,
-              updated_at: "2026-01-01T00:00:00.000Z",
-            },
+            [
+              {
+                user_id: USER,
+                item_id: "water-1",
+                done: true,
+                status: "packed",
+                quantity: 3,
+                packed_at: "2026-01-01T00:00:00.000Z",
+                expires_on: "2027-01-01",
+                updated_at: "2026-01-02T00:00:00.000Z",
+              },
+              {
+                user_id: USER,
+                item_id: "food-1",
+                done: false,
+                status: "bought",
+                quantity: 3,
+                packed_at: null,
+                expires_on: null,
+                updated_at: "2026-01-02T00:00:00.000Z",
+              },
+            ],
             { onConflict: "user_id,item_id" },
           ],
         },
       ]);
+    });
+
+    it("skips the round trip for an empty batch", async () => {
+      const { client, calls } = createFakeSupabase();
+
+      await new SupabaseChecklistRepository(client).saveEntries(USER, []);
+
+      expect(calls).toEqual([]);
     });
 
     it("maps unique violations to ConflictError", async () => {
@@ -94,12 +167,7 @@ describe("SupabaseChecklistRepository", () => {
       });
 
       await expect(
-        new SupabaseChecklistRepository(client).setDone(
-          USER,
-          "water-1",
-          true,
-          new Date(),
-        ),
+        new SupabaseChecklistRepository(client).saveEntries(USER, [entry]),
       ).rejects.toBeInstanceOf(ConflictError);
     });
   });

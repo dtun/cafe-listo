@@ -24,7 +24,14 @@ export type {
   ToolDefinition,
   ToolName,
 } from "./mcp/tool-registry";
-export type { ChecklistEntry, ChecklistRepository } from "./checklist/ports";
+export type {
+  ChecklistEntry,
+  ChecklistRepository,
+  ItemStatus,
+} from "./checklist/ports";
+export { ITEM_STATUSES } from "./checklist/ports";
+export type { ItemUpdate } from "./checklist/update";
+export { applyItemUpdate } from "./checklist/update";
 export type {
   FeedbackKind,
   FeedbackRepository,

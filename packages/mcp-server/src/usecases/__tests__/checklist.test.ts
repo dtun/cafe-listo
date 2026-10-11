@@ -81,12 +81,105 @@ describe("checklist use cases", () => {
   });
 
   it("ignores stored entries for items no longer in the catalog", async () => {
-    await repo.setDone(ALICE, "retired-item", true, new Date());
+    await repo.saveEntries(ALICE, [
+      {
+        itemId: "retired-item",
+        status: "packed",
+        quantity: null,
+        packedAt: new Date(),
+        expiresOn: null,
+        updatedAt: new Date(),
+      },
+    ]);
 
     const result = await getChecklist.execute({ userId: ALICE });
 
     if (!result.ok) throw new Error("expected ok");
     expect(result.data.progress.done).toBe(0);
+  });
+
+  describe("set_item_done shim over status", () => {
+    it("maps done to packed and stamps packedAt", async () => {
+      await setItemDone.execute({
+        userId: ALICE,
+        itemId: "water-1",
+        done: true,
+      });
+
+      expect(await repo.getEntries(ALICE)).toEqual([
+        {
+          itemId: "water-1",
+          status: "packed",
+          quantity: null,
+          packedAt: new Date("2026-01-01T00:00:00.000Z"),
+          expiresOn: null,
+          updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+        },
+      ]);
+    });
+
+    it("keeps a bought quantity and expiry when packing", async () => {
+      await repo.saveEntries(ALICE, [
+        {
+          itemId: "water-1",
+          status: "bought",
+          quantity: 4,
+          packedAt: null,
+          expiresOn: "2027-01-01",
+          updatedAt: new Date("2025-12-01T00:00:00.000Z"),
+        },
+      ]);
+
+      await setItemDone.execute({
+        userId: ALICE,
+        itemId: "water-1",
+        done: true,
+      });
+
+      expect((await repo.getEntries(ALICE))[0]).toMatchObject({
+        status: "packed",
+        quantity: 4,
+        expiresOn: "2027-01-01",
+      });
+    });
+
+    it("maps not done to needed and clears the packed details", async () => {
+      await setItemDone.execute({
+        userId: ALICE,
+        itemId: "water-1",
+        done: true,
+      });
+
+      await setItemDone.execute({
+        userId: ALICE,
+        itemId: "water-1",
+        done: false,
+      });
+
+      expect((await repo.getEntries(ALICE))[0]).toMatchObject({
+        status: "needed",
+        quantity: null,
+        packedAt: null,
+      });
+    });
+
+    it("counts only packed items as done in get_checklist", async () => {
+      await repo.saveEntries(ALICE, [
+        {
+          itemId: "water-1",
+          status: "bought",
+          quantity: null,
+          packedAt: null,
+          expiresOn: null,
+          updatedAt: new Date(),
+        },
+      ]);
+
+      const result = await getChecklist.execute({ userId: ALICE });
+
+      if (!result.ok) throw new Error("expected ok");
+      expect(result.data.progress.done).toBe(0);
+    });
   });
 
   it("resets the checklist", async () => {

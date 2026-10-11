@@ -1,4 +1,4 @@
-import type { ChecklistRepository } from "@cafe-listo/shared";
+import { applyItemUpdate, type ChecklistRepository } from "@cafe-listo/shared";
 import {
   fail,
   ok,
@@ -13,6 +13,11 @@ export interface SetItemDoneInput {
   done: boolean;
 }
 
+/**
+ * Legacy shim over item status: done means packed, not done means needed.
+ * Kept so clients built on set_item_done keep working; update_items is the
+ * full version.
+ */
 export class SetItemDone {
   constructor(
     private readonly repo: ChecklistRepository,
@@ -26,12 +31,15 @@ export class SetItemDone {
     if (!this.catalog.items.some((item) => item.id === input.itemId)) {
       return fail("not_found", `Item not found: ${input.itemId}`);
     }
-    await this.repo.setDone(
-      input.userId,
-      input.itemId,
-      input.done,
+    const existing = (await this.repo.getEntries(input.userId)).find(
+      (entry) => entry.itemId === input.itemId,
+    );
+    const entry = applyItemUpdate(
+      existing,
+      { itemId: input.itemId, status: input.done ? "packed" : "needed" },
       this.clock.now(),
     );
+    await this.repo.saveEntries(input.userId, [entry]);
     return ok({ itemId: input.itemId, done: input.done });
   }
 }

@@ -41,7 +41,9 @@ export class GetChecklist {
     userId: string;
   }): Promise<UseCaseResult<ChecklistView>> {
     const entries = await this.repo.getEntries(input.userId);
-    const doneIds = new Set(entries.filter((e) => e.done).map((e) => e.itemId));
+    const doneIds = new Set(
+      entries.filter((e) => e.status === "packed").map((e) => e.itemId),
+    );
 
     const items = this.catalog.items.map((item) => ({
       ...item,
