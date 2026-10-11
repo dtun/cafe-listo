@@ -47,6 +47,7 @@ describe("supabaseUseCasesFor", () => {
     const usecases = useCasesFor({ userId: "u1", accessToken: "jwt" });
 
     expect(Object.keys(usecases).sort()).toEqual([
+      "buildShoppingList",
       "getChecklist",
       "getHousehold",
       "getTote",

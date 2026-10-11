@@ -36,6 +36,7 @@ describe("toolRegistry", () => {
 
   it("exposes the v1 tool set", () => {
     expect(toolRegistry.map((t) => t.name).sort()).toEqual([
+      "build_shopping_list",
       "get_checklist",
       "get_household",
       "get_tote",
@@ -67,6 +68,7 @@ describe("toolRegistry", () => {
     expect(toolMutates.set_household).toBe(true);
     expect(toolMutates.get_tote).toBe(false);
     expect(toolMutates.update_items).toBe(true);
+    expect(toolMutates.build_shopping_list).toBe(false);
     expect(toolWriteHints.update_items).toEqual({
       destructiveHint: false,
       idempotentHint: true,

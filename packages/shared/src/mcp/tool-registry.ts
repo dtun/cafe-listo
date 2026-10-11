@@ -1,7 +1,9 @@
 import { z } from "zod";
 import { ITEM_STATUSES } from "../checklist/ports";
 import type { FeedbackKind } from "../feedback/ports";
+import { STORE_CATEGORIES } from "../catalog/types";
 import { householdPatchSchema } from "../household/schema";
+import { MAX_HOUSEHOLD_DAYS } from "../household/types";
 import { CategoryId } from "../types";
 
 /**
@@ -41,11 +43,12 @@ export const TOOL_NAMES = [
   "set_household",
   "get_tote",
   "update_items",
+  "build_shopping_list",
 ] as const;
 
 /** Sent in the MCP initialize result. Provider-agnostic: standard MCP only. */
 export const mcpServerInstructions =
-  "Cafe Listo helps people build an emergency prep box. Use list_categories and list_items to browse the catalog, and get_checklist, set_item_done, and reset_checklist to track what the user has packed. Use get_household to recall where the user lives and who they are preparing for, and set_household to save it; ask the user for missing details rather than guessing. Once a household is saved, use get_tote for the kit sized to it and the user's readiness, and update_items to record what they bought or packed, batching related items into one call. If the user wants something the catalog lacks, the guidance looks wrong for their situation, a tool fails or can't do what they asked, or they seem frustrated, offer once to send feedback to the Cafe Listo team with submit_feedback. Tell them exactly what you will send and only call it after they say yes.";
+  "Cafe Listo helps people build an emergency prep box. Use list_categories and list_items to browse the catalog, and get_checklist, set_item_done, and reset_checklist to track what the user has packed. Use get_household to recall where the user lives and who they are preparing for, and set_household to save it; ask the user for missing details rather than guessing. Once a household is saved, use get_tote for the kit sized to it and the user's readiness, and update_items to record what they bought or packed, batching related items into one call. When the user is ready to shop, use build_shopping_list for what is left to buy, grouped by store. If the user wants something the catalog lacks, the guidance looks wrong for their situation, a tool fails or can't do what they asked, or they seem frustrated, offer once to send feedback to the Cafe Listo team with submit_feedback. Tell them exactly what you will send and only call it after they say yes.";
 
 export const itemStatusSchema = z.enum(ITEM_STATUSES);
 
@@ -188,6 +191,25 @@ export const toolRegistry = [
         .max(100),
     }),
   },
+  {
+    name: "build_shopping_list",
+    title: "Build shopping list",
+    description:
+      "Build the user's shopping list: the kit for their saved household and region minus what they already bought or packed (a recorded quantity is subtracted), grouped by kind of store (online, hardware, grocery, pharmacy, pet). Each line has the quantity to buy in purchase units, a generic search term and a plain search link (no prices, no affiliate links). The tote comes first when the user has none. Also returns things to make or gather (cash, document copies), how the whole kit fits in the tote and what is stored beside it and why, and the sources behind each item and hazard (lines cite source ids; sources maps them to title and url). Options: has_tote (true or false when the user has said; if omitted, the user has a tote once any item is packed), store_preference to put every line in one store group (e.g. online), budget_mode to list only essential items (and the tote) now and defer the rest to later, and duration_days (1-14) to plan for a different number of days than the saved profile without changing it. Requires a saved household; if there is none, call set_household first. After the user shops, record purchases with update_items.",
+    inputSchema: z.object({
+      has_tote: z.boolean().optional(),
+      store_preference: z.enum(STORE_CATEGORIES).optional(),
+      budget_mode: z.boolean().optional(),
+      duration_days: z
+        .number()
+        .int({ message: "duration_days must be a whole number of days" })
+        .min(1, { message: "duration_days must be at least 1" })
+        .max(MAX_HOUSEHOLD_DAYS, {
+          message: `duration_days must be at most ${MAX_HOUSEHOLD_DAYS}`,
+        })
+        .optional(),
+    }),
+  },
 ] as const satisfies ReadonlyArray<ToolDefinition>;
 
 type Registry = typeof toolRegistry;
@@ -222,6 +244,7 @@ export const toolMutates: Record<ToolName, boolean> = {
   set_household: true,
   get_tote: false,
   update_items: true,
+  build_shopping_list: false,
 };
 
 /** Behavior hints for tools that write (toolMutates). Only meaningful when readOnlyHint is false. */

@@ -31,6 +31,7 @@ import { SetHousehold } from "./usecases/set-household";
 import { SetItemDone } from "./usecases/set-item-done";
 import { SubmitFeedback } from "./usecases/submit-feedback";
 import { UpdateItems } from "./usecases/update-items";
+import { BuildShoppingList } from "./usecases/build-shopping-list";
 import {
   randomUuids,
   systemClock,
@@ -50,6 +51,7 @@ export interface UseCases {
   setHousehold: SetHousehold;
   getTote: GetTote;
   updateItems: UpdateItems;
+  buildShoppingList: BuildShoppingList;
 }
 
 export interface ContainerDeps {
@@ -91,6 +93,7 @@ export function buildContainer(
     setHousehold: new SetHousehold(deps.profileRepository, clock),
     getTote: new GetTote(deps.profileRepository, repo, clock),
     updateItems: new UpdateItems(repo, CATALOG_ITEMS, clock),
+    buildShoppingList: new BuildShoppingList(deps.profileRepository, repo),
   });
 }
 
