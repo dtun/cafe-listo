@@ -10,6 +10,7 @@ describe("household rules", () => {
       jest.isolateModulesAsync(async () => {
         await import("../household/types");
         await import("../household/scale");
+        await import("../household/patch");
       }),
     ).resolves.toBeUndefined();
   });

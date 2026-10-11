@@ -89,3 +89,5 @@ export {
   PET_KINDS,
 } from "./household/types";
 export { hasHouseholdFlag, householdSize, scale } from "./household/scale";
+export type { HouseholdPatch } from "./household/patch";
+export { applyHouseholdPatch, isEmptyHouseholdPatch } from "./household/patch";
