@@ -126,6 +126,25 @@ export {
   resolveKit,
   toPackItems,
 } from "./catalog/resolve-kit";
+export type {
+  ContainerPurchase,
+  ShoppingLine,
+  ShoppingList,
+  ShoppingListOptions,
+  StoreGroup,
+  UnlistedItem,
+} from "./shopping/shopping-list";
+export {
+  buildShoppingList,
+  CONTAINER_PURCHASES,
+  inferHasTote,
+  unitsHave,
+  unitsToBuy,
+} from "./shopping/shopping-list";
+export {
+  STORE_SEARCH_URL_TEMPLATES,
+  storeSearchUrl,
+} from "./shopping/store-search";
 export type { HouseholdPatch } from "./household/patch";
 export { applyHouseholdPatch, isEmptyHouseholdPatch } from "./household/patch";
 export type { HouseholdProfile, ProfileRepository } from "./profile/ports";

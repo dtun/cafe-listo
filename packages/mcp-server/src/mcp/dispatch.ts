@@ -3,6 +3,7 @@ import type { z } from "zod";
 import type { UseCases } from "../container";
 import { checklistDto, itemDto } from "../dto/checklist";
 import { profileDto } from "../dto/household";
+import { shoppingListDto } from "../dto/shopping-list";
 import { toteDto, updatedItemsDto } from "../dto/tote";
 import { logInfo } from "../lib/log";
 import type { UseCaseErrorCode, UseCaseResult } from "../usecases/types";
@@ -144,6 +145,22 @@ export function buildDispatchTable(
                 quantity: item.quantity,
                 expiresOn: item.expires_on,
               })),
+            }),
+          ),
+        ),
+    ),
+    build_shopping_list: defineTool(
+      "build_shopping_list",
+      toolSchemas.build_shopping_list,
+      async (args, userId) =>
+        shoppingListDto(
+          unwrap(
+            await usecases.buildShoppingList.execute({
+              userId,
+              hasTote: args.has_tote,
+              storePreference: args.store_preference,
+              budgetMode: args.budget_mode,
+              durationDays: args.duration_days,
             }),
           ),
         ),
