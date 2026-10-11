@@ -40,6 +40,12 @@ export type {
   PromptRenderResult,
   RenderedPrompt,
 } from "./mcp/prompts";
+export {
+  buildMcpResourceList,
+  readMcpResource,
+  SOURCES_RESOURCE_URI,
+} from "./mcp/resources";
+export type { McpResourceContents, McpResourceListing } from "./mcp/resources";
 export type {
   ChecklistEntry,
   ChecklistRepository,
