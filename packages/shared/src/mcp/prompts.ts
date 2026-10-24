@@ -88,12 +88,15 @@ const ADDRESS_RULE =
 function locationStep(
   location: z.output<typeof promptLocationSchema> | undefined,
 ): string {
-  const given = !location
-    ? ""
-    : "state" in location
-      ? ` I said I'm in ${location.state}; confirm that with me before saving it.`
-      : ` I said my ZIP is ${location.zip}; confirm that with me before saving it.`;
-  return `1. Location. Call get_household to see what is already saved.${given} If nothing is saved, ask where I live. ${ADDRESS_RULE}`;
+  const step = "1. Location. Call get_household to see what is already saved.";
+  if (!location) {
+    return `${step} If nothing is saved, ask where I live. ${ADDRESS_RULE}`;
+  }
+  const said =
+    "state" in location
+      ? `I said I'm in ${location.state}`
+      : `I said my ZIP is ${location.zip}`;
+  return `${step} ${said}; confirm that with me before saving it. If it differs from what is saved, ask me which is right. ${ADDRESS_RULE}`;
 }
 
 function renderPrepMyTote(
