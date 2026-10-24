@@ -74,12 +74,16 @@ function resolveLocation(
 
   if (zipState && zip) {
     const region = regionForState(zipState);
-    if (region) {
+    if (!region) {
       return {
-        ok: true,
-        location: { region: region.id, state: zipState, zip },
+        ok: false,
+        message: `ZIP code ${zip} is in ${zipState}, which has no FEMA region. Ask the user for their state instead.`,
       };
     }
+    return {
+      ok: true,
+      location: { region: region.id, state: zipState, zip },
+    };
   }
 
   if (existing) {
