@@ -81,6 +81,16 @@ describe("renderMcpPrompt(prep_my_tote)", () => {
     );
   });
 
+  it("asks where I live only when no location is given", () => {
+    expect(textOf({})).toContain("If nothing is saved, ask where I live.");
+
+    const text = textOf({ location: "AZ" });
+    expect(text).not.toContain("ask where I live");
+    expect(text).toContain(
+      "If it differs from what is saved, ask me which is right.",
+    );
+  });
+
   it("keeps only the five digits of a ZIP+4", () => {
     const text = textOf({ location: "85201-1234" });
 
