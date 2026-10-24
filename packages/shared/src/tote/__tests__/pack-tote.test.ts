@@ -180,6 +180,9 @@ describe("packTote", () => {
     );
     expect(waterWarning?.message).toMatch(/only 20 of 70 units/i);
     expect(waterWarning?.message).toMatch(/beside the tote/i);
+
+    // 20 packed gallons alone weigh about 78 kg, far over the carry limit.
+    expect(result.warnings.map((w) => w.code)).toContain("overweight");
   });
 
   test("puts packable: false items in overflow with a store-beside hint", () => {

@@ -75,9 +75,13 @@ describe("resolveKit", () => {
     ).map((f) => f.region);
     expect(withN95).toEqual([8, 9, 10]);
 
-    // Fire extinguisher: earthquake.
-    expect(ids(resolveKit(1, single))).toContain("tools-8");
-    expect(ids(resolveKit(5, single))).not.toContain("tools-8");
+    // ready-kit items are in every region's kit.
+    for (const { region } of REGION_FIXTURES) {
+      const kit = ids(resolveKit(region, single));
+      for (const id of ["tools-8", "shelter-9", "shelter-10"]) {
+        expect(kit).toContain(id);
+      }
+    }
   });
 
   test("takes the strongest relevance among matched hazards", () => {
@@ -110,6 +114,14 @@ describe("resolveKit", () => {
     expect(find(resolveKit(1, seniors), "water-1")?.units).toBe(28);
     // 8 diapers × 1 infant × 3 days = 24 → 1 pack of 30.
     expect(find(resolveKit(1, family), "medical-13")?.units).toBe(1);
+  });
+
+  test("leaves infants out of items they can't use", () => {
+    const kit = resolveKit(9, family);
+    // 5 people, 1 an infant: meals and whistles for 4; water for all 5.
+    expect(find(kit, "food-1")?.units).toBe(12);
+    expect(find(kit, "comms-2")?.units).toBe(4);
+    expect(find(kit, "water-1")?.units).toBe(15);
   });
 
   test("leaves out items that scale to 0", () => {

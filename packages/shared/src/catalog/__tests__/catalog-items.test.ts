@@ -96,7 +96,8 @@ describe("catalog items", () => {
   test("covers the hazard items the research calls for", () => {
     const byId = new Map(CATALOG_ITEMS.map((i) => [i.id, i]));
     expect(byId.get("shelter-3")?.appliesTo).toEqual(["wildfire", "volcano"]);
-    expect(byId.get("tools-8")?.appliesTo).toEqual(["earthquake"]);
+    expect(byId.get("tools-8")?.appliesTo).toBe("base");
+    expect(byId.get("shelter-9")?.appliesTo).toBe("base");
     expect(byId.get("comms-1")?.appliesTo).toBe("base");
     expect(byId.get("food-2")?.appliesTo).toBe("base");
   });

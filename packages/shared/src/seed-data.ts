@@ -109,7 +109,12 @@ export const BASE_PREP_ITEMS: CatalogItem[] = [
     // Unsourced: 1 packet per person per day. ready-heat says only "drink
     // plenty of fluids".
     appliesTo: ["heat"],
-    quantityRule: { kind: "per_person_per_day", amount: 1, packSize: 12 },
+    quantityRule: {
+      kind: "per_person_per_day",
+      amount: 1,
+      packSize: 12,
+      excludeInfants: true,
+    },
     unit: "packet",
     purchaseUnit: "box of 12 packets",
     unitVolumeL: 0.3,
@@ -152,7 +157,11 @@ export const BASE_PREP_ITEMS: CatalogItem[] = [
     // shelter-in-place ceiling (fema-food-water-2004, fema-evac-sip-planning);
     // Ready.gov now says only "several days".
     appliesTo: "base",
-    quantityRule: { kind: "per_person_per_day", amount: 1 },
+    quantityRule: {
+      kind: "per_person_per_day",
+      amount: 1,
+      excludeInfants: true,
+    },
     unit: "person-day",
     purchaseUnit: "one person's food for one day",
     unitVolumeL: 1.5,
@@ -191,7 +200,12 @@ export const BASE_PREP_ITEMS: CatalogItem[] = [
     regionNote: null,
     // Unsourced: 1 bar per person per day, on top of the meals in food-1.
     appliesTo: "base",
-    quantityRule: { kind: "per_person_per_day", amount: 1, packSize: 12 },
+    quantityRule: {
+      kind: "per_person_per_day",
+      amount: 1,
+      packSize: 12,
+      excludeInfants: true,
+    },
     unit: "bar",
     purchaseUnit: "box of 12 bars",
     unitVolumeL: 0.6,
@@ -475,7 +489,12 @@ export const BASE_PREP_ITEMS: CatalogItem[] = [
     // N95 is the hazard upgrade over the base kit's dust mask (shelter-7).
     // Unsourced: 1 mask per person per day.
     appliesTo: ["wildfire", "volcano"],
-    quantityRule: { kind: "per_person_per_day", amount: 1, packSize: 10 },
+    quantityRule: {
+      kind: "per_person_per_day",
+      amount: 1,
+      packSize: 10,
+      excludeInfants: true,
+    },
     unit: "mask",
     purchaseUnit: "box of 10 masks",
     unitVolumeL: 0.5,
@@ -691,7 +710,7 @@ export const BASE_PREP_ITEMS: CatalogItem[] = [
     quantity: "1 per person",
     regionNote: null,
     appliesTo: "base",
-    quantityRule: perPerson(1),
+    quantityRule: { kind: "per_person", amount: 1, excludeInfants: true },
     unit: "whistle",
     purchaseUnit: "1 whistle",
     unitVolumeL: 0.02,
