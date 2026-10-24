@@ -133,8 +133,16 @@ const ruleAmount = {
 };
 
 export const baseQuantityRuleSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("per_person_per_day"), ...ruleAmount }),
-  z.object({ kind: z.literal("per_person"), ...ruleAmount }),
+  z.object({
+    kind: z.literal("per_person_per_day"),
+    ...ruleAmount,
+    excludeInfants: z.boolean().optional(),
+  }),
+  z.object({
+    kind: z.literal("per_person"),
+    ...ruleAmount,
+    excludeInfants: z.boolean().optional(),
+  }),
   z.object({ kind: z.literal("per_household"), ...ruleAmount }),
   z.object({
     kind: z.literal("per_pet_per_day"),

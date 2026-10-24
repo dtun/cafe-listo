@@ -3,6 +3,8 @@ import {
   type BaseQuantityRule,
   type Household,
   type HouseholdFlag,
+  type PerPersonPerDayRule,
+  type PerPersonRule,
   type PerPetPerDayRule,
   type PetKind,
   type QuantityRule,
@@ -33,12 +35,20 @@ function petCount(household: Household, rule: PerPetPerDayRule): number {
   return kinds.reduce((sum, kind) => sum + household.pets[kind], 0);
 }
 
+function personCount(
+  household: Household,
+  rule: PerPersonPerDayRule | PerPersonRule,
+): number {
+  const size = householdSize(household);
+  return rule.excludeInfants ? size - household.infants : size;
+}
+
 function baseNeed(rule: BaseQuantityRule, household: Household): number {
   switch (rule.kind) {
     case "per_person_per_day":
-      return rule.amount * householdSize(household) * household.days;
+      return rule.amount * personCount(household, rule) * household.days;
     case "per_person":
-      return rule.amount * householdSize(household);
+      return rule.amount * personCount(household, rule);
     case "per_household":
       return rule.amount;
     case "per_pet_per_day":

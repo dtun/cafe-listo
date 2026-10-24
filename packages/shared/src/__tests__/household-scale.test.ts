@@ -58,6 +58,11 @@ describe("scale", () => {
       expect(scale(water, household({ days: 14 }))).toBe(14);
       expect(scale(water, { ...familyOfFive, days: 14 })).toBe(70);
     });
+
+    it("leaves infants out of the daily count when excludeInfants is set", () => {
+      const meals: QuantityRule = { ...water, excludeInfants: true };
+      expect(scale(meals, familyOfFive)).toBe(12); // 4 people × 3 days
+    });
   });
 
   describe("per_person", () => {
@@ -65,6 +70,16 @@ describe("scale", () => {
       const rule: QuantityRule = { kind: "per_person", amount: 1 };
       expect(scale(rule, singleAdult)).toBe(1);
       expect(scale(rule, { ...familyOfFive, days: 14 })).toBe(5);
+    });
+
+    it("leaves infants out when excludeInfants is set", () => {
+      const rule: QuantityRule = {
+        kind: "per_person",
+        amount: 1,
+        excludeInfants: true,
+      };
+      expect(scale(rule, familyOfFive)).toBe(4);
+      expect(scale(rule, household({ adults: 0, infants: 1 }))).toBe(0);
     });
   });
 

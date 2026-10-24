@@ -72,8 +72,16 @@ interface RuleAmount {
   packSize?: number;
 }
 
-export type PerPersonPerDayRule = RuleAmount & { kind: "per_person_per_day" };
-export type PerPersonRule = RuleAmount & { kind: "per_person" };
+/** Fields for rules counted per person. */
+interface PerPersonFields {
+  /** Leave infants out of the count, for items they can't use (meals, N95s). */
+  excludeInfants?: boolean;
+}
+
+export type PerPersonPerDayRule = RuleAmount &
+  PerPersonFields & { kind: "per_person_per_day" };
+export type PerPersonRule = RuleAmount &
+  PerPersonFields & { kind: "per_person" };
 export type PerHouseholdRule = RuleAmount & { kind: "per_household" };
 export type PerPetPerDayRule = RuleAmount & {
   kind: "per_pet_per_day";
