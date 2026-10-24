@@ -75,9 +75,13 @@ describe("resolveKit", () => {
     ).map((f) => f.region);
     expect(withN95).toEqual([8, 9, 10]);
 
-    // Fire extinguisher: earthquake.
-    expect(ids(resolveKit(1, single))).toContain("tools-8");
-    expect(ids(resolveKit(5, single))).not.toContain("tools-8");
+    // ready-kit items are in every region's kit.
+    for (const { region } of REGION_FIXTURES) {
+      const kit = ids(resolveKit(region, single));
+      for (const id of ["tools-8", "shelter-9", "shelter-10"]) {
+        expect(kit).toContain(id);
+      }
+    }
   });
 
   test("takes the strongest relevance among matched hazards", () => {

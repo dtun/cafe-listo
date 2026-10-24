@@ -381,7 +381,8 @@ export const ADDED_CATALOG_ITEMS: CatalogItem[] = [
     essential: true,
     quantity: "1 per person",
     regionNote: null,
-    appliesTo: ["winter-weather"],
+    // ready-kit lists a sleeping bag or warm blanket for each person.
+    appliesTo: "base",
     quantityRule: { kind: "per_person", amount: 1 },
     unit: "blanket",
     purchaseUnit: "1 compact sleeping bag or blanket",
@@ -400,7 +401,8 @@ export const ADDED_CATALOG_ITEMS: CatalogItem[] = [
     essential: false,
     quantity: "1 set per person",
     regionNote: null,
-    appliesTo: ["winter-weather"],
+    // ready-kit lists a complete change of clothing for each person.
+    appliesTo: "base",
     quantityRule: { kind: "per_person", amount: 1 },
     unit: "set",
     purchaseUnit: "1 set",
@@ -466,7 +468,8 @@ export const ADDED_CATALOG_ITEMS: CatalogItem[] = [
     quantity: "1",
     regionNote: null,
     // Not packable: keep it where you can reach it, not in the tote.
-    appliesTo: ["earthquake"],
+    // ready-kit lists it for every household, not just earthquake regions.
+    appliesTo: "base",
     quantityRule: { kind: "per_household", amount: 1 },
     unit: "extinguisher",
     purchaseUnit: "1 extinguisher",
