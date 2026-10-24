@@ -163,6 +163,30 @@ describe("checklist use cases", () => {
       });
     });
 
+    it("leaves a bought item alone when marked not done", async () => {
+      const bought = {
+        itemId: "water-1",
+        status: "bought" as const,
+        quantity: 4,
+        packedAt: null,
+        expiresOn: "2027-01-01",
+        updatedAt: new Date("2025-12-01T00:00:00.000Z"),
+      };
+      await repo.saveEntries(ALICE, [bought]);
+
+      const result = await setItemDone.execute({
+        userId: ALICE,
+        itemId: "water-1",
+        done: false,
+      });
+
+      expect(result).toEqual({
+        ok: true,
+        data: { itemId: "water-1", done: false },
+      });
+      expect((await repo.getEntries(ALICE))[0]).toEqual(bought);
+    });
+
     it("counts only packed items as done in get_checklist", async () => {
       await repo.saveEntries(ALICE, [
         {
