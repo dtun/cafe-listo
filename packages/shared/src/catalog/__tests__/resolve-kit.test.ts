@@ -112,6 +112,14 @@ describe("resolveKit", () => {
     expect(find(resolveKit(1, family), "medical-13")?.units).toBe(1);
   });
 
+  test("leaves infants out of items they can't use", () => {
+    const kit = resolveKit(9, family);
+    // 5 people, 1 an infant: meals and whistles for 4; water for all 5.
+    expect(find(kit, "food-1")?.units).toBe(12);
+    expect(find(kit, "comms-2")?.units).toBe(4);
+    expect(find(kit, "water-1")?.units).toBe(15);
+  });
+
   test("leaves out items that scale to 0", () => {
     const kit = ids(resolveKit(1, single));
     for (const id of ["medical-2", "medical-12", "medical-13", "water-7"]) {
