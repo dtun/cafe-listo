@@ -17,8 +17,11 @@ describe("App", () => {
   it("renders all page sections", () => {
     render(<App />);
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      /Cafe Listo/i,
+      /get listo/i,
     );
+    expect(
+      screen.getByRole("complementary", { name: /in the news/i }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /categories/i }),
     ).toBeInTheDocument();
@@ -36,5 +39,14 @@ describe("App", () => {
     expect(screen.getByRole("main")).toBeInTheDocument();
     expect(screen.getByRole("banner")).toBeInTheDocument();
     expect(screen.getByRole("contentinfo")).toBeInTheDocument();
+  });
+
+  it("gives each email field a unique id", () => {
+    render(<App />);
+    const ids = screen
+      .getAllByLabelText(/email address/i)
+      .map((input) => input.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids.length).toBe(2);
   });
 });

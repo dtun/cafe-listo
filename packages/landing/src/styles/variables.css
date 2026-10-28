@@ -10,6 +10,8 @@
   --color-text-muted: #4a3728;
   --color-accent-gold: #f9a825;
   --color-border: #e0d6cc;
+  --color-ink: #15110e;
+  --color-ink-muted: #c9bfb5;
 
   /* Typography */
   --font-family:
@@ -23,6 +25,7 @@
   --font-size-2xl: 2rem;
   --font-size-3xl: 2.5rem;
   --font-size-4xl: 3.5rem;
+  --font-size-display: clamp(3rem, 10vw, 6.5rem);
 
   /* Spacing */
   --space-xs: 0.25rem;

@@ -1,3 +1,4 @@
+import { NewsBar } from "./components/NewsBar";
 import { Hero } from "./components/Hero";
 import { CategoriesGrid } from "./components/CategoriesGrid";
 import { Stats } from "./components/Stats";
@@ -9,6 +10,7 @@ export function App() {
   return (
     <>
       <header>
+        <NewsBar />
         <Hero />
       </header>
       <main>

@@ -1,48 +1,133 @@
+/* News bar */
+.news-bar {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background-color: var(--color-primary);
+  color: var(--color-surface);
+  font-size: var(--font-size-sm);
+}
+
+.news-bar-tag {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-yellow);
+}
+
 /* Hero */
 .hero {
-  text-align: center;
   padding: var(--space-4xl) var(--space-xl) var(--space-3xl);
-  background: linear-gradient(
-    180deg,
-    var(--color-surface) 0%,
-    var(--color-bg) 100%
-  );
+  background-color: var(--color-ink);
+  color: var(--color-surface);
+  text-align: center;
+}
+
+.hero-brand {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--color-ink-muted);
+  margin-bottom: var(--space-lg);
 }
 
 .hero h1 {
-  font-size: var(--font-size-4xl);
-  font-weight: 800;
-  color: var(--color-primary);
-  margin-bottom: var(--space-md);
+  font-size: var(--font-size-display);
+  font-weight: 900;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  margin-bottom: var(--space-xl);
 }
 
-.hero p {
+.hero h1 span {
+  color: var(--color-yellow);
+}
+
+.hero-lede {
   font-size: var(--font-size-lg);
-  color: var(--color-text-muted);
-  max-width: 36rem;
-  margin: 0 auto var(--space-xl);
+  color: var(--color-ink-muted);
+  max-width: 38rem;
+  margin: 0 auto var(--space-2xl);
 }
 
-.hero-cta {
-  display: inline-block;
+/* Waitlist */
+.waitlist {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-sm);
+  max-width: 32rem;
+  margin: 0 auto;
+}
+
+.waitlist input {
+  flex: 1 1 16rem;
+  min-width: 0;
+  padding: var(--space-md);
+  font: inherit;
+  border: 2px solid var(--color-border);
+  border-radius: var(--border-radius);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+}
+
+.waitlist input:focus-visible {
+  outline: 3px solid var(--color-yellow);
+  outline-offset: 2px;
+}
+
+.waitlist button {
+  flex: 0 0 auto;
   padding: var(--space-md) var(--space-xl);
+  font: inherit;
+  font-weight: 800;
+  border: none;
+  border-radius: var(--border-radius);
   background-color: var(--color-yellow);
   color: var(--color-text);
-  font-size: var(--font-size-lg);
-  font-weight: 700;
-  border-radius: var(--border-radius);
+  cursor: pointer;
   transition: background-color 0.2s;
 }
 
-.hero-cta:hover {
+.waitlist button:hover:not(:disabled) {
   background-color: var(--color-yellow-dark);
-  color: var(--color-text);
+}
+
+.waitlist button:focus-visible {
+  outline: 3px solid var(--color-surface);
+  outline-offset: 2px;
+}
+
+.waitlist :disabled {
+  cursor: not-allowed;
+}
+
+.waitlist button:disabled {
+  opacity: 0.7;
+}
+
+.waitlist-note {
+  flex-basis: 100%;
+  font-size: var(--font-size-sm);
+  opacity: 0.8;
+}
+
+.waitlist-message {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-yellow);
 }
 
 /* Stats */
 .stats {
   padding: var(--space-2xl) var(--space-xl);
-  background-color: var(--color-primary);
+  background-color: var(--color-ink);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
   color: var(--color-surface);
 }
 
@@ -129,7 +214,7 @@
 
 .features-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
   gap: var(--space-xl);
 }
 
@@ -152,7 +237,23 @@
 }
 
 .app-store-links h2 {
-  font-size: var(--font-size-2xl);
+  font-size: var(--font-size-3xl);
+  margin-bottom: var(--space-md);
+}
+
+.app-store-links > p {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-muted);
+  max-width: 32rem;
+  margin: 0 auto var(--space-xl);
+}
+
+.app-store-links .waitlist {
+  margin-bottom: var(--space-2xl);
+}
+
+.app-store-links .waitlist-message {
+  color: var(--color-primary);
   margin-bottom: var(--space-2xl);
 }
 
@@ -198,12 +299,23 @@
 
 /* Responsive */
 @media (max-width: 640px) {
-  .hero h1 {
-    font-size: var(--font-size-2xl);
+  .hero {
+    padding: var(--space-3xl) var(--space-md) var(--space-2xl);
   }
 
-  .hero p {
+  .hero-lede {
     font-size: var(--font-size-base);
+  }
+
+  .news-bar {
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-xs);
+    text-align: center;
+  }
+
+  .waitlist button {
+    flex-basis: 100%;
   }
 
   .stats dl {

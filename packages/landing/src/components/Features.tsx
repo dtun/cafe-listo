@@ -2,22 +2,22 @@ const FEATURES = [
   {
     title: "Works Offline",
     description:
-      "Your checklist is always available, even when cell towers go down during an emergency.",
+      "Your checklist stays on your phone. It still works when the power and the cell towers don't.",
   },
   {
     title: "Region-Specific Guidance",
     description:
-      "Tailored recommendations for your FEMA region — from hurricane prep to wildfire readiness.",
+      "Notes for your FEMA region, from hurricane season to wildfire smoke to extreme heat.",
   },
   {
-    title: "Track Your Progress",
+    title: "Essentials First",
     description:
-      "See exactly where you stand across all categories and know what to prioritize next.",
+      "See what you already have, what's missing, and which gaps to close first.",
   },
   {
     title: "AI Chat Integration",
     description:
-      "Access your checklist through AI chat clients like Claude and ChatGPT — get guidance right where you already work.",
+      "Check your kit from AI chat clients like Claude and ChatGPT, in the tools you already use.",
   },
 ];
 
