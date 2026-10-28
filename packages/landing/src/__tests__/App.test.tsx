@@ -17,7 +17,7 @@ describe("App", () => {
   it("renders all page sections", () => {
     render(<App />);
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      /get listo/i,
+      /start with 3/i,
     );
     expect(
       screen.getByRole("complementary", { name: /in the news/i }),

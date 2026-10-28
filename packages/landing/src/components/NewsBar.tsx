@@ -4,7 +4,7 @@ export function NewsBar() {
       <span className="news-bar-tag">In the news</span>
       <p>
         &ldquo;30 days of preparedness&rdquo; warnings are trending nationwide.
-        Official guidance says start with 3. No specific threat has been named.
+        No specific threat has been named.
       </p>
     </aside>
   );

@@ -7,17 +7,12 @@ describe("Hero", () => {
   it("renders the headline in an h1", () => {
     render(<Hero />);
     const heading = screen.getByRole("heading", { level: 1 });
-    expect(heading).toHaveTextContent(/get listo/i);
+    expect(heading).toHaveTextContent(/30 days\?\s*Start with 3\./);
   });
 
   it("renders the brand name", () => {
     render(<Hero />);
     expect(screen.getByText("Cafe Listo")).toBeInTheDocument();
-  });
-
-  it("contrasts the 30-day headlines with the 3-day baseline", () => {
-    render(<Hero />);
-    expect(screen.getByText(/30 days/)).toHaveTextContent(/start with 3/);
   });
 
   it("states the item count from shared data", () => {
